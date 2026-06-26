@@ -105,7 +105,7 @@
 | LINE / Facebook OG 預覽圖 | 已完成 | 產生 1200×630 `og-image.png`，並設定 Open Graph / Twitter Card meta。 | 圖片對應石門國小 PaGamO 授權填報主題。 |
 | GitHub Pages 部署 | 已完成 | 建立 GitHub repo 與 Actions workflow，部署 `public/` 靜態網站。 | Repo：https://github.com/cagoooo/PaGamO |
 | Firebase Hosting 部署 | 已完成 | 同步保留 Firebase Hosting 版本。 | 目前主要正式入口建議使用 GitHub Pages。 |
-| Google Chat 通知代理 | 進行中 | 已建立 GAS 程式骨架與前端通知函式，規劃由 GAS 代理推送 Google Chat。 | 尚待完成 GAS Web App URL 串接與 webhook property 驗證。 |
+| Google Chat 通知代理 | 已完成 | 已改用 Supabase Edge Function `pagamo-notify` 代理推送 Google Chat，前端只呼叫 Function URL。 | Webhook 存在 Supabase 私有設定表，不寫入公開前端或 GitHub repo；已完成成功通知測試。 |
 
 ## 捌、 未來優化改良與可開發功能建議
 
@@ -180,10 +180,10 @@
 
 ### D. 通知與監控優化
 
-1. **完成 Google Chat 即時通知**
-   - 填報成功時推送：申請老師、班級數、科目摘要、送出時間。
-   - 填報失敗時推送：錯誤訊息、發生頁面、操作階段。
-   - 建議使用 GAS 代理 webhook，避免 webhook URL 暴露在前端。
+1. **Google Chat 即時通知強化**
+   - 目前已完成填報成功與失敗通知，內容包含申請老師、班級數、科目摘要、送出時間與錯誤階段。
+   - 已改用 Supabase Edge Function 代理 webhook，避免 webhook URL 暴露在前端。
+   - 後續可再增加每日摘要與截止日前提醒。
 
 2. **每日填報摘要**
    - 每天固定時間推送今日新增與更新筆數。
