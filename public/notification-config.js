@@ -1,0 +1,1 @@
+window.PAGAMO_NOTIFY_ENDPOINT = '';
