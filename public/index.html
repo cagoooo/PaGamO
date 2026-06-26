@@ -83,9 +83,26 @@
       font-size:16px !important;
       padding:10px 14px !important;
     }
+    .subject-label input[type="checkbox"] {
+      width:18px;
+      height:18px;
+      flex:0 0 auto;
+    }
+    .subject-title { font-weight:700; color:#334155; }
+    .subject-badge { white-space:nowrap; }
     .class-row { padding:18px; }
     .row-label { font-size:18px !important; }
     #successSection { font-size:17px; }
+    .modal-backdrop {
+      position:fixed;
+      inset:0;
+      z-index:60;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(15,23,42,.56);
+      padding:18px;
+    }
     @media (min-width: 1024px) {
       body { font-size:18px; }
       .form-grid { grid-template-columns:minmax(0, 1.45fr) minmax(340px, .75fr); align-items:start; }
@@ -110,15 +127,104 @@
       }
     }
     @media (max-width: 640px) {
-      .class-fields { grid-template-columns:1fr; }
-      .page-shell { width:100%; padding-left:14px; padding-right:14px; }
+      body { background:#f8fafc; }
+      .page-shell { width:100%; padding-left:12px; padding-right:12px; }
+      .page-shell.pt-5 { padding-top:12px; }
       .page-shell .text-xs { font-size:15px; }
       .page-shell .text-sm { font-size:16px; }
+      header .page-shell { padding-top:16px; padding-bottom:16px; }
+      header h1 { font-size:21px; }
+      header p { font-size:15px; }
+      #formSection { padding-top:12px; padding-bottom:96px; }
+      #formSection > section > .bg-white { padding:18px 16px; border-radius:18px; }
+      #formSection h2 { align-items:flex-start; }
+      #formSection h2 + p { margin-left:0; margin-top:6px; }
+      .class-row {
+        padding:18px 14px;
+        border-radius:18px;
+        background:#fff;
+        animation:none;
+      }
+      .class-row > .flex.items-center.justify-between {
+        align-items:center;
+        gap:10px;
+      }
+      .row-label { font-size:22px !important; line-height:1.15; }
+      .class-fields {
+        grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+        gap:14px 12px !important;
+      }
+      #formSection label {
+        font-size:16px;
+        line-height:1.25;
+        color:#1f2937;
+      }
       #formSection input,
       #formSection select,
-      #formSection button { width:100%; min-height:50px; font-size:16px; }
-      .subject-label { width:100%; justify-content:flex-start; }
+      #formSection button {
+        width:100%;
+        min-height:54px;
+        font-size:17px;
+      }
+      #formSection input,
+      #formSection select {
+        padding:12px 11px;
+        border-radius:14px;
+      }
+      .quick-add-buttons {
+        display:grid !important;
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+        gap:10px;
+      }
+      .quick-add-buttons button {
+        white-space:nowrap;
+        font-size:16px !important;
+      }
+      .subject-options {
+        display:grid !important;
+        grid-template-columns:1fr;
+        gap:12px;
+      }
+      .subject-label {
+        width:100%;
+        display:grid !important;
+        grid-template-columns:42px minmax(0, 1fr) auto;
+        align-items:center;
+        gap:12px;
+        min-height:72px;
+        padding:14px 16px !important;
+        border-radius:16px;
+        justify-content:initial;
+      }
+      .subject-label input[type="checkbox"] {
+        width:32px !important;
+        height:32px !important;
+        min-height:32px !important;
+        margin:0;
+      }
+      .subject-title {
+        display:block;
+        font-size:18px;
+        line-height:1.35;
+        color:#1f2937;
+      }
+      .subject-badge {
+        justify-self:end;
+        font-size:15px !important;
+        padding:4px 8px !important;
+      }
+      #submitBtn {
+        min-height:64px !important;
+        border-radius:18px;
+        margin-top:6px;
+        box-shadow:0 12px 26px rgba(37,99,235,.22);
+      }
+      .site-credit { padding-bottom:34px; }
       header .flex.items-center.gap-3 { align-items:flex-start; }
+    }
+    @media (max-width: 360px) {
+      .class-fields { grid-template-columns:1fr !important; }
+      .quick-add-buttons { grid-template-columns:1fr; }
     }
     .site-credit { text-align:center; padding:24px 16px; font-size:13px; color:rgba(15,23,42,.55); }
     .site-credit__heart { display:inline-block; margin:0 2px; filter:saturate(1.1); }
@@ -174,6 +280,20 @@
       班級申請資料
     </h2>
     <p class="text-xs text-gray-500 mb-4 ml-8">每班最多申請 <strong class="text-blue-600">2 科</strong>，每班填寫一列</p>
+
+    <div class="mb-4 rounded-xl border border-blue-100 bg-blue-50 p-3">
+      <p class="text-sm font-bold text-blue-800 mb-2">快速新增</p>
+      <div class="quick-add-buttons flex flex-wrap gap-2">
+        <button type="button" onclick="addClassRow({grade:3})"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 border border-blue-200 hover:bg-blue-100">＋ 3年級</button>
+        <button type="button" onclick="addClassRow({grade:4})"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 border border-blue-200 hover:bg-blue-100">＋ 4年級</button>
+        <button type="button" onclick="addClassRow({grade:5, subjects:['chinese','math']})"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 border border-blue-200 hover:bg-blue-100">＋ 5年中＋數</button>
+        <button type="button" onclick="addClassRow({grade:6, subjects:['chinese','math']})"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-blue-700 border border-blue-200 hover:bg-blue-100">＋ 6年中＋數</button>
+      </div>
+    </div>
 
     <div id="classRows" class="space-y-3"></div>
 
@@ -264,6 +384,20 @@
   </div>
 </div>
 
+<div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
+    <h2 id="confirmTitle" class="text-xl font-bold text-slate-800 mb-2">送出前確認</h2>
+    <p class="text-slate-500 text-sm mb-4">請確認班級、人數、申請老師與科目無誤後再送出。</p>
+    <div id="confirmList" class="max-h-[50vh] overflow-y-auto rounded-xl bg-slate-50 p-4 text-left text-sm space-y-2"></div>
+    <div class="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+      <button type="button" onclick="closeConfirmModal()"
+        class="rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 hover:bg-slate-50">返回修改</button>
+      <button type="button" id="confirmSubmitBtn" onclick="confirmSubmit()"
+        class="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700">確認送出</button>
+    </div>
+  </div>
+</div>
+
 <footer class="site-credit">
   Made with <span class="site-credit__heart" aria-label="愛心">❤️</span> by
   <a href="https://www.smes.tyc.edu.tw/modules/tadnews/page.php?ncsn=11&nsn=16#a5" target="_blank" rel="noopener noreferrer" class="site-credit__author">阿凱老師</a>
@@ -277,6 +411,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const SCHOOL_NAME = '桃園市石門國民小學';
 const SCHOOL_CODE = '034725';
 let rowCounter = 0;
+let pendingRecords = [];
 
 function notifyChat(payload) {
   const endpoint = (window.PAGAMO_NOTIFY_ENDPOINT || '').trim();
@@ -327,7 +462,17 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-function addClassRow() {
+function getLastTeacherName() {
+  try { return localStorage.getItem('pagamo_last_teacher') || ''; } catch (err) { return ''; }
+}
+
+function setLastTeacherName(name) {
+  try {
+    if (name) localStorage.setItem('pagamo_last_teacher', name);
+  } catch (err) {}
+}
+
+function addClassRow(preset = {}) {
   rowCounter++;
   const id = rowCounter;
   const gradeOptions = [3,4,5,6].map(g => {
@@ -360,26 +505,26 @@ function addClassRow() {
       </div>
       <div>
         <label class="text-xs text-gray-500 font-medium">申請老師 <span class="text-red-500">*</span></label>
-        <input type="text" placeholder="老師姓名" class="request-teacher mt-1 w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <input type="text" placeholder="老師姓名" class="request-teacher mt-1 w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" oninput="setLastTeacherName(this.value.trim())">
       </div>
     </div>
     <div id="grade-warn-${id}" class="hidden text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mb-2"></div>
     <div>
       <label class="text-xs text-gray-500 font-medium block mb-2">申請科目（最多 2 科）<span class="text-red-500">*</span></label>
-      <div class="flex flex-wrap gap-2">
+      <div class="subject-options flex flex-wrap gap-2">
         <label class="subject-label recommended flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors bg-white text-sm" title="官方推薦">
           <input type="checkbox" class="subject-cb" value="chinese" onchange="enforceMax(this, ${id})">
-          📖 中文閱讀素養
-          <span class="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">推薦</span>
+          <span class="subject-title">📖 中文閱讀素養</span>
+          <span class="subject-badge text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">推薦</span>
         </label>
         <label class="subject-label flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 transition-colors bg-white text-sm">
           <input type="checkbox" class="subject-cb" value="english" onchange="enforceMax(this, ${id})">
-          🔤 英文閱讀素養
+          <span class="subject-title">🔤 英文閱讀素養</span>
         </label>
         <label class="subject-label recommended flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors bg-white text-sm" title="官方推薦">
           <input type="checkbox" class="subject-cb" value="math" onchange="enforceMax(this, ${id})">
-          🔢 數學素養
-          <span class="text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">推薦</span>
+          <span class="subject-title">🔢 數學素養</span>
+          <span class="subject-badge text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">推薦</span>
         </label>
       </div>
     </div>
@@ -387,7 +532,40 @@ function addClassRow() {
   </div>`;
 
   document.getElementById('classRows').insertAdjacentHTML('beforeend', html);
+  const row = document.getElementById(`row-${id}`);
+  if (preset.grade) row.querySelector('.grade-sel').value = String(preset.grade);
+  row.querySelector('.request-teacher').value = preset.teacher || getLastTeacherName();
+  (preset.subjects || []).forEach(subject => {
+    const cb = row.querySelector(`.subject-cb[value="${subject}"]`);
+    if (cb) cb.checked = true;
+  });
+  checkGradeRec(id);
   updateRowLabels();
+}
+
+function collectRecords() {
+  return [...document.querySelectorAll('.class-row')].map(row => {
+    const grade = parseInt(row.querySelector('.grade-sel').value);
+    const classNum = parseInt(row.querySelector('.class-num').value);
+    const count = parseInt(row.querySelector('.stu-count').value);
+    const requestTeacher = row.querySelector('.request-teacher').value.trim();
+    const subs = [...row.querySelectorAll('.subject-cb:checked')].map(c => c.value);
+
+    return {
+      school_year: 115,
+      city: '桃園市',
+      school_name: SCHOOL_NAME,
+      school_code: SCHOOL_CODE,
+      teacher_name: requestTeacher,
+      grade,
+      class_num: classNum,
+      student_count: count,
+      subject_chinese: subs.includes('chinese'),
+      subject_english: subs.includes('english'),
+      subject_math: subs.includes('math'),
+      submitted_at: new Date().toISOString(),
+    };
+  });
 }
 
 function removeRow(id) {
@@ -493,35 +671,43 @@ function validateForm() {
 async function submitForm() {
   if (!validateForm()) return;
 
+  pendingRecords = collectRecords();
+  showConfirmModal(pendingRecords);
+}
+
+function showConfirmModal(records) {
+  document.getElementById('confirmList').innerHTML = records.map(r => `
+    <div class="rounded-lg border border-slate-200 bg-white p-3">
+      <div class="font-bold text-slate-800">${escapeHtml(r.grade)}年${escapeHtml(r.class_num)}班</div>
+      <div class="text-slate-600">${escapeHtml(r.student_count)}人・${escapeHtml(r.teacher_name)}老師</div>
+      <div class="text-blue-700 font-semibold">${subjectLabel(r)}</div>
+    </div>
+  `).join('');
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirmModal').classList.add('hidden');
+  const confirmBtn = document.getElementById('confirmSubmitBtn');
+  confirmBtn.disabled = false;
+  confirmBtn.textContent = '確認送出';
+}
+
+async function confirmSubmit() {
+  if (!pendingRecords.length) {
+    closeConfirmModal();
+    showToast('目前沒有可送出的填報資料，請重新確認後再送出');
+    return;
+  }
+
   const btn = document.getElementById('submitBtn');
+  const confirmBtn = document.getElementById('confirmSubmitBtn');
   btn.disabled = true;
   btn.textContent = '⏳ 送出中...';
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = '送出中...';
 
-  const rows = document.querySelectorAll('.class-row');
-
-  const records = [];
-  rows.forEach(row => {
-    const grade = parseInt(row.querySelector('.grade-sel').value);
-    const classNum = parseInt(row.querySelector('.class-num').value);
-    const count = parseInt(row.querySelector('.stu-count').value);
-    const requestTeacher = row.querySelector('.request-teacher').value.trim();
-    const subs = [...row.querySelectorAll('.subject-cb:checked')].map(c => c.value);
-
-    records.push({
-      school_year: 115,
-      city: '桃園市',
-      school_name: SCHOOL_NAME,
-      school_code: SCHOOL_CODE,
-      teacher_name: requestTeacher,
-      grade,
-      class_num: classNum,
-      student_count: count,
-      subject_chinese: subs.includes('chinese'),
-      subject_english: subs.includes('english'),
-      subject_math: subs.includes('math'),
-      submitted_at: new Date().toISOString(),
-    });
-  });
+  const records = pendingRecords;
 
   try {
     // UPSERT: on conflict (school_code, grade, class_num) → update
@@ -531,6 +717,8 @@ async function submitForm() {
     });
     if (error) throw error;
 
+    try { localStorage.removeItem('pagamo_pending_records'); } catch (err) {}
+
     notifyChat({
       status: 'success',
       step: '資料已寫入 Supabase，後台可下載授權清冊',
@@ -538,9 +726,13 @@ async function submitForm() {
       teacherNames: [...new Set(records.map(r => r.teacher_name))].join('、'),
       detail: recordsSummary(records),
     });
+    closeConfirmModal();
     showSuccess(SCHOOL_NAME, records);
   } catch (err) {
     console.error(err);
+    try {
+      localStorage.setItem('pagamo_pending_records', JSON.stringify({ savedAt: new Date().toISOString(), records }));
+    } catch (storageErr) {}
     notifyChat({
       status: 'error',
       step: 'Supabase upsert 失敗，資料尚未完成送出',
@@ -549,6 +741,8 @@ async function submitForm() {
     showToast('送出失敗，請確認網路連線後再試（' + (err.message || '') + '）');
     btn.disabled = false;
     btn.textContent = '✉️ 送出填報';
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = '確認送出';
   }
 }
 
@@ -599,9 +793,11 @@ function resetForm() {
   document.getElementById('successSection').classList.add('hidden');
   document.getElementById('classRows').innerHTML = '';
   rowCounter = 0;
+  pendingRecords = [];
   const btn = document.getElementById('submitBtn');
   btn.disabled = false;
   btn.textContent = '✉️ 送出填報';
+  closeConfirmModal();
   addClassRow();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }

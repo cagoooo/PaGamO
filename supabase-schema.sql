@@ -64,6 +64,13 @@ to anon
 using (true)
 with check (true);
 
+drop policy if exists "Allow public delete for admin page" on public.pagamo_submissions;
+create policy "Allow public delete for admin page"
+on public.pagamo_submissions
+for delete
+to anon
+using (school_code = '034725');
+
 -- Do not add a public SELECT policy for a production deployment.
 -- The current static admin page can only read data if SELECT is opened to anon,
 -- which is convenient for a trusted temporary site but exposes all submissions.

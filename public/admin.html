@@ -99,6 +99,24 @@
       </div>
     </div>
 
+    <!-- 完整性檢查 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+        ✅ 匯出前完整性檢查
+        <span class="text-xs text-gray-400 font-normal" id="qualityCount"></span>
+      </h2>
+      <div id="qualityPanel" class="grid md:grid-cols-3 gap-3 text-sm"></div>
+    </div>
+
+    <!-- 申請老師摘要 -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+        👩‍🏫 申請老師摘要
+        <span class="text-xs text-gray-400 font-normal" id="teacherSummaryCount"></span>
+      </h2>
+      <div id="teacherSummary" class="grid md:grid-cols-2 gap-3"></div>
+    </div>
+
     <!-- 學校摘要 -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
       <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -132,10 +150,11 @@
               <th class="text-center px-3 py-3 text-xs font-semibold text-green-600">🔢 數學</th>
               <th class="text-left px-3 py-3 text-xs font-semibold text-gray-500">申請老師</th>
               <th class="text-left px-3 py-3 text-xs font-semibold text-gray-400">填報時間</th>
+              <th class="text-center px-3 py-3 text-xs font-semibold text-gray-400">操作</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="10" class="text-center py-12 text-gray-400 text-sm">⏳ 載入中...</td></tr>
+            <tr><td colspan="11" class="text-center py-12 text-gray-400 text-sm">⏳ 載入中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -208,13 +227,15 @@ async function loadData() {
 
   if (error) {
     document.getElementById('tableBody').innerHTML =
-      '<tr><td colspan="10" class="text-center py-8 text-red-400 text-sm">❌ 載入失敗，請重新整理頁面</td></tr>';
+      '<tr><td colspan="11" class="text-center py-8 text-red-400 text-sm">❌ 載入失敗，請重新整理頁面</td></tr>';
     return;
   }
 
   allData = data || [];
   updateStats();
   updateSchoolFilter();
+  renderQualityPanel();
+  renderTeacherSummary();
   renderSchoolSummary();
   renderTable();
 }
@@ -283,6 +304,77 @@ function renderSchoolSummary() {
   }).join('');
 }
 
+function subjectNames(r) {
+  const s = [];
+  if (r.subject_chinese) s.push('中文');
+  if (r.subject_english) s.push('英文');
+  if (r.subject_math) s.push('數學');
+  return s;
+}
+
+function renderQualityPanel() {
+  const issues = [];
+  allData.forEach(r => {
+    if (!r.teacher_name) issues.push(`${r.grade}年${r.class_num}班缺申請老師`);
+    if (!r.student_count || Number(r.student_count) <= 0) issues.push(`${r.grade}年${r.class_num}班人數異常`);
+    if (subjectNames(r).length === 0) issues.push(`${r.grade}年${r.class_num}班未選科目`);
+    if (subjectNames(r).length > 2) issues.push(`${r.grade}年${r.class_num}班超過 2 科`);
+    if (r.grade < 3 || r.grade > 6) issues.push(`${r.grade}年${r.class_num}班年級超出 3–6`);
+  });
+
+  const subjectCounts = [
+    { label: '中文', count: allData.filter(r => r.subject_chinese).length, cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+    { label: '英文', count: allData.filter(r => r.subject_english).length, cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+    { label: '數學', count: allData.filter(r => r.subject_math).length, cls: 'bg-green-50 text-green-700 border-green-200' },
+  ];
+  document.getElementById('qualityCount').textContent = issues.length ? `${issues.length} 項提醒` : '目前無異常';
+  document.getElementById('qualityPanel').innerHTML = `
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div class="text-xs text-slate-500">班級筆數</div>
+      <div class="text-2xl font-bold text-slate-800">${allData.length}</div>
+      <div class="text-xs text-slate-500 mt-1">正式匯出前請確認各科分頁筆數</div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div class="text-xs text-slate-500 mb-2">各科班級數</div>
+      <div class="flex flex-wrap gap-2">${subjectCounts.map(s => `<span class="rounded-full border px-3 py-1 text-xs font-bold ${s.cls}">${s.label} ${s.count}班</span>`).join('')}</div>
+    </div>
+    <div class="rounded-xl ${issues.length ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'} border p-3">
+      <div class="text-xs font-bold mb-1">${issues.length ? '需要確認' : '檢查通過'}</div>
+      <div class="text-xs leading-relaxed">${issues.length ? issues.map(escapeHtml).join('<br>') : '目前資料可直接下載清冊。'}</div>
+    </div>`;
+}
+
+function renderTeacherSummary() {
+  const map = {};
+  allData.forEach(r => {
+    const name = r.teacher_name || '未填老師';
+    if (!map[name]) map[name] = { name, classes: 0, students: 0, subjects: { chinese: 0, english: 0, math: 0 }, rows: [] };
+    const t = map[name];
+    t.classes++;
+    t.students += Number(r.student_count || 0);
+    if (r.subject_chinese) t.subjects.chinese++;
+    if (r.subject_english) t.subjects.english++;
+    if (r.subject_math) t.subjects.math++;
+    t.rows.push(`${r.grade}年${r.class_num}班`);
+  });
+  const teachers = Object.values(map).sort((a,b) => a.name.localeCompare(b.name));
+  document.getElementById('teacherSummaryCount').textContent = teachers.length ? `共 ${teachers.length} 位老師` : '尚無資料';
+  document.getElementById('teacherSummary').innerHTML = teachers.length ? teachers.map(t => `
+    <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="font-bold text-gray-800">${escapeHtml(t.name)}</div>
+        <div class="text-xs text-gray-500">${t.classes}班・${t.students}人</div>
+      </div>
+      <div class="mt-2 text-xs text-gray-600">${escapeHtml(t.rows.join('、'))}</div>
+      <div class="mt-2 flex gap-2 text-xs">
+        <span class="text-blue-700">中文 ${t.subjects.chinese}</span>
+        <span class="text-purple-700">英文 ${t.subjects.english}</span>
+        <span class="text-green-700">數學 ${t.subjects.math}</span>
+      </div>
+    </div>
+  `).join('') : '<p class="text-xs text-gray-400">尚無填報資料</p>';
+}
+
 function updateSchoolFilter() {
   const schools = [...new Set(allData.map(r => r.school_name))].sort();
   const sel = document.getElementById('schoolFilter');
@@ -304,7 +396,7 @@ function renderTable() {
 
   if (!rows.length) {
     document.getElementById('tableBody').innerHTML =
-      '<tr><td colspan="10" class="text-center py-12 text-gray-400 text-sm">尚無填報資料</td></tr>';
+      '<tr><td colspan="11" class="text-center py-12 text-gray-400 text-sm">尚無填報資料</td></tr>';
     return;
   }
 
@@ -330,7 +422,25 @@ function renderTable() {
       <td class="px-3 py-2.5 text-center">${check(r.subject_math)}</td>
       <td class="px-3 py-2.5 text-xs text-gray-500">${escapeHtml(r.teacher_name || '—')}</td>
       <td class="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">${fmtDate(r.submitted_at)}</td>
+      <td class="px-3 py-2.5 text-center">
+        <button onclick="deleteRecord(${Number(r.grade)}, ${Number(r.class_num)})" class="text-xs text-red-500 border border-red-100 rounded-lg px-2 py-1 hover:bg-red-50">刪除</button>
+      </td>
     </tr>`).join('');
+}
+
+async function deleteRecord(grade, classNum) {
+  if (!confirm(`確定刪除 ${grade}年${classNum}班 的填報資料嗎？`)) return;
+  const { error } = await db
+    .from('pagamo_submissions')
+    .delete()
+    .eq('school_code', '034725')
+    .eq('grade', grade)
+    .eq('class_num', classNum);
+  if (error) {
+    alert('刪除失敗：' + error.message);
+    return;
+  }
+  await loadData();
 }
 
 function findDataStartRow(ws) {
