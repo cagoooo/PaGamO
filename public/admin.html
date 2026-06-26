@@ -601,6 +601,68 @@ function fillSubjectSheet(wb, sheetName, subjectKey) {
     });
 }
 
+// Service Worker 版本更新通知
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+
+  function _showUpdateBar(waitingWorker) {
+    if (document.getElementById('sw-update-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'sw-update-bar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = [
+      'position:fixed;top:0;left:0;right:0;z-index:9999',
+      'display:flex;align-items:center;justify-content:center;gap:10px',
+      'padding:10px 16px',
+      'background:#1d4ed8;color:#fff;font-size:14px;font-weight:500',
+      'box-shadow:0 2px 12px rgba(0,0,0,.2)',
+    ].join(';');
+    bar.innerHTML =
+      '<span>✨ 後台系統已更新</span>' +
+      '<button id="sw-reload-btn" style="background:#fff;color:#1d4ed8;border:none;border-radius:6px;padding:4px 14px;font-weight:700;cursor:pointer;font-size:14px;">立刻重整</button>' +
+      '<button id="sw-dismiss-btn" aria-label="關閉" style="background:transparent;border:none;color:rgba(255,255,255,.75);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;margin-left:4px;">✕</button>';
+    document.body.prepend(bar);
+
+    var _reloaded = false;
+    document.getElementById('sw-reload-btn').onclick = function () {
+      bar.remove();
+      if (waitingWorker) {
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!_reloaded) { _reloaded = true; location.reload(); }
+        });
+        waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        location.reload();
+      }
+    };
+    document.getElementById('sw-dismiss-btn').onclick = function () { bar.remove(); };
+  }
+
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .then(function (reg) {
+      if (reg.waiting) { _showUpdateBar(reg.waiting); }
+
+      function _watch(worker) {
+        worker.addEventListener('statechange', function () {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            _showUpdateBar(worker);
+          }
+        });
+      }
+      if (reg.installing) _watch(reg.installing);
+      reg.addEventListener('updatefound', function () {
+        if (reg.installing) _watch(reg.installing);
+      });
+
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && e.data.type === 'SW_ACTIVATED' && navigator.serviceWorker.controller) {
+          _showUpdateBar(null);
+        }
+      });
+    })
+    .catch(function (e) { console.debug('[SW] 註冊失敗（本機開發可忽略）:', e); });
+})();
+
 async function downloadExcel() {
   if (!allData.length) { alert('目前沒有資料可以下載！'); return; }
 

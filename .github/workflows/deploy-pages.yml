@@ -27,6 +27,13 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: 注入 Build Version 到 sw.js
+        run: |
+          BUILD_VERSION="$(git rev-parse --short HEAD)-$(date -u +%Y%m%d%H%M)"
+          sed -i "s/const BUILD_VERSION = \"[^\"]*\"/const BUILD_VERSION = \"${BUILD_VERSION}\"/g" public/sw.js
+          echo "✓ sw.js BUILD_VERSION 注入：${BUILD_VERSION}"
+          grep -o '__BUILD_VERSION__' public/sw.js && echo "::error::❌ BUILD_VERSION 未替換！" && exit 1 || true
+
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
