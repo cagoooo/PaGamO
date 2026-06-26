@@ -328,6 +328,34 @@
     .site-credit__heart { display:inline-block; margin:0 2px; filter:saturate(1.1); }
     .site-credit__author { color:inherit; text-decoration:none; border-bottom:1px dotted currentColor; padding-bottom:1px; transition:color .2s,border-color .2s; }
     .site-credit__author:hover { color:#2563eb; border-bottom-color:#2563eb; }
+    .admin-entry {
+      position:fixed;
+      left:14px;
+      bottom:14px;
+      z-index:40;
+      width:38px;
+      height:38px;
+      display:grid;
+      place-items:center;
+      border-radius:999px;
+      background:rgba(255,255,255,.72);
+      border:1px solid rgba(148,163,184,.35);
+      color:rgba(71,85,105,.42);
+      box-shadow:0 8px 22px rgba(15,23,42,.08);
+      backdrop-filter:blur(10px);
+      transition:opacity .2s, transform .2s, color .2s, background .2s, border-color .2s;
+      opacity:.42;
+      text-decoration:none;
+    }
+    .admin-entry:hover,
+    .admin-entry:focus-visible {
+      opacity:1;
+      transform:translateY(-1px);
+      color:#2563eb;
+      background:#fff;
+      border-color:#bfdbfe;
+      outline:none;
+    }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
@@ -486,6 +514,8 @@
   Made with <span class="site-credit__heart" aria-label="愛心">❤️</span> by
   <a href="https://www.smes.tyc.edu.tw/modules/tadnews/page.php?ncsn=11&nsn=16#a5" target="_blank" rel="noopener noreferrer" class="site-credit__author">阿凱老師</a>
 </footer>
+
+<a href="admin.html" class="admin-entry" aria-label="進入後台管理" title="後台管理">⚙</a>
 
 <script>
 const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
