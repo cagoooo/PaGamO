@@ -24,10 +24,20 @@ self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+const SKIP_CACHE_HOSTS = [
+  'supabase.co',       // Supabase REST / Edge Functions — 動態資料，絕不快取
+  'cdn.tailwindcss.com',
+  'cdn.jsdelivr.net',
+  'cdn.sheetjs.com',
+];
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  // 動態來源（API / CDN）：直通網路，不碰快取
+  if (SKIP_CACHE_HOSTS.some(h => url.hostname.endsWith(h))) return;
 
   // HTML 頁面：network-first，確保老師永遠拿到最新表單
   if (event.request.mode === 'navigate') {
@@ -45,7 +55,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 靜態資源：cache-first；跨域 opaque response 不入快取
+  // 本站靜態資源（圖片、favicon、manifest 等）：cache-first
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
