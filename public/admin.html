@@ -171,12 +171,58 @@
   </div>
 </div>
 
+<!-- 編輯 Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 fade-in">
+    <h3 class="text-base font-bold text-gray-800 mb-4">✏️ 編輯班級資料</h3>
+    <div class="space-y-4">
+      <div>
+        <div class="text-xs font-medium text-gray-500 mb-1">班級</div>
+        <div id="editClassLabel" class="text-sm font-bold text-gray-800 bg-gray-50 rounded-xl px-3 py-2"></div>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-500 block mb-1" for="editStudentCount">學生人數</label>
+        <input type="number" id="editStudentCount" min="1" max="60"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-500 block mb-1" for="editTeacherName">申請老師</label>
+        <input type="text" id="editTeacherName" placeholder="老師姓名"
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <div class="text-xs font-medium text-gray-500 mb-2">申請科目（最多 2 科）</div>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input type="checkbox" id="editChinese" class="w-4 h-4 accent-blue-600">
+            <span class="text-blue-700">📖 中文閱讀素養</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input type="checkbox" id="editEnglish" class="w-4 h-4 accent-purple-600">
+            <span class="text-purple-700">🔤 英文閱讀素養</span>
+          </label>
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input type="checkbox" id="editMath" class="w-4 h-4 accent-green-600">
+            <span class="text-green-700">🔢 數學素養</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <p id="editErr" class="text-red-500 text-xs mt-3 hidden"></p>
+    <div class="flex gap-3 mt-5">
+      <button onclick="closeEditModal()" class="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-colors">取消</button>
+      <button onclick="saveEdit()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-2.5 text-sm transition-colors">儲存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allData = [];
+let editTarget = null;
 
 const READ_ME_ROWS = [
   ['📝 填寫步驟說明'],
@@ -423,7 +469,10 @@ function renderTable() {
       <td class="px-3 py-2.5 text-xs text-gray-500">${escapeHtml(r.teacher_name || '—')}</td>
       <td class="px-3 py-2.5 text-xs text-gray-400 whitespace-nowrap">${fmtDate(r.submitted_at)}</td>
       <td class="px-3 py-2.5 text-center">
-        <button onclick="deleteRecord(${Number(r.grade)}, ${Number(r.class_num)})" class="text-xs text-red-500 border border-red-100 rounded-lg px-2 py-1 hover:bg-red-50">刪除</button>
+        <div class="flex justify-center gap-1">
+          <button onclick="openEditModal(${Number(r.grade)}, ${Number(r.class_num)})" class="text-xs text-blue-500 border border-blue-100 rounded-lg px-2 py-1 hover:bg-blue-50">編輯</button>
+          <button onclick="deleteRecord(${Number(r.grade)}, ${Number(r.class_num)})" class="text-xs text-red-500 border border-red-100 rounded-lg px-2 py-1 hover:bg-red-50">刪除</button>
+        </div>
       </td>
     </tr>`).join('');
 }
@@ -440,6 +489,73 @@ async function deleteRecord(grade, classNum) {
     alert('刪除失敗：' + error.message);
     return;
   }
+  await loadData();
+}
+
+function openEditModal(grade, classNum) {
+  const record = allData.find(r => r.grade == grade && r.class_num == classNum);
+  if (!record) return;
+  editTarget = { grade, classNum };
+  document.getElementById('editClassLabel').textContent = `${grade}年${classNum}班`;
+  document.getElementById('editStudentCount').value = record.student_count || '';
+  document.getElementById('editTeacherName').value = record.teacher_name || '';
+  document.getElementById('editChinese').checked = !!record.subject_chinese;
+  document.getElementById('editEnglish').checked = !!record.subject_english;
+  document.getElementById('editMath').checked = !!record.subject_math;
+  document.getElementById('editErr').classList.add('hidden');
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  editTarget = null;
+  document.getElementById('editModal').classList.add('hidden');
+}
+
+async function saveEdit() {
+  if (!editTarget) return;
+  const count = Number(document.getElementById('editStudentCount').value);
+  const teacher = document.getElementById('editTeacherName').value.trim();
+  const chinese = document.getElementById('editChinese').checked;
+  const english = document.getElementById('editEnglish').checked;
+  const math = document.getElementById('editMath').checked;
+  const subjectCount = [chinese, english, math].filter(Boolean).length;
+  const errEl = document.getElementById('editErr');
+
+  if (!count || count < 1 || count > 60) {
+    errEl.textContent = '請填入有效的學生人數（1–60）';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!teacher) {
+    errEl.textContent = '請填入申請老師姓名';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (subjectCount === 0) {
+    errEl.textContent = '請至少選擇一個科目';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (subjectCount > 2) {
+    errEl.textContent = '每班最多申請 2 科';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+
+  const { error } = await db
+    .from('pagamo_submissions')
+    .update({ student_count: count, teacher_name: teacher, subject_chinese: chinese, subject_english: english, subject_math: math })
+    .eq('school_code', '034725')
+    .eq('grade', editTarget.grade)
+    .eq('class_num', editTarget.classNum);
+
+  if (error) {
+    errEl.textContent = '儲存失敗：' + error.message;
+    errEl.classList.remove('hidden');
+    return;
+  }
+  closeEditModal();
   await loadData();
 }
 
@@ -498,7 +614,9 @@ async function downloadExcel() {
     fillSubjectSheet(wb, '英文閱讀素養', 'subject_english');
     fillSubjectSheet(wb, '數學閱讀素養', 'subject_math');
 
-    const stamp = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const _now = new Date();
+    const _p = n => String(n).padStart(2, '0');
+    const stamp = `${_now.getFullYear()}${_p(_now.getMonth()+1)}${_p(_now.getDate())}_${_p(_now.getHours())}${_p(_now.getMinutes())}`;
     XLSX.writeFile(wb, `桃園市_石門國小_班級授權清冊_${stamp}.xlsx`, { cellStyles: true });
   } catch (err) {
     console.error(err);
