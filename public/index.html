@@ -45,8 +45,66 @@
     .fade-in { animation: fadeIn .35s ease; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     .class-row { animation: fadeIn .25s ease; }
-    .subject-label:has(input:checked) { border-color: #3b82f6 !important; background: #eff6ff !important; }
-    .subject-label.recommended:has(input:checked) { border-color: #7c3aed !important; background: #f5f3ff !important; }
+    .subject-label:has(input:checked) {
+      border-color:#60a5fa !important;
+      background:linear-gradient(135deg,#eff6ff,#eef2ff) !important;
+      box-shadow:0 8px 22px rgba(37,99,235,.12);
+    }
+    .subject-label.recommended:has(input:checked) {
+      border-color:#a78bfa !important;
+      background:linear-gradient(135deg,#f5f3ff,#fdf2f8) !important;
+      box-shadow:0 8px 22px rgba(124,58,237,.14);
+    }
+    .class-row-head {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:16px;
+    }
+    .row-label {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-weight:800;
+      color:#1f2a44;
+    }
+    .row-label::before {
+      content:"";
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(135deg,#2563eb,#8b5cf6);
+      box-shadow:0 0 0 4px #dbeafe, 0 0 0 7px #f5f3ff;
+    }
+    .delete-row-btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      min-height:36px !important;
+      width:auto !important;
+      padding:6px 12px;
+      border-radius:999px;
+      color:#e11d48;
+      background:linear-gradient(135deg,#fff1f2,#fff7ed);
+      border:1px solid #fecdd3;
+      font-weight:700;
+    }
+    .delete-row-btn:hover { background:#ffe4e6; }
+    .form-field {
+      min-width:0;
+      border-radius:14px;
+    }
+    .field-label,
+    .section-label {
+      display:flex;
+      align-items:center;
+      gap:4px;
+      margin-bottom:6px;
+      font-weight:700;
+      color:#26324d;
+    }
     .page-shell { width:min(1320px, 94vw); margin:0 auto; padding-left:clamp(16px, 2vw, 28px); padding-right:clamp(16px, 2vw, 28px); }
     .form-grid { display:grid; gap:22px; }
     .side-stack { display:grid; gap:22px; align-content:start; }
@@ -98,6 +156,19 @@
       font-size:16px !important;
       padding:12px 14px !important;
       border-radius:14px;
+      box-shadow:0 1px 2px rgba(15,23,42,.04);
+    }
+    .subject-chinese {
+      background:linear-gradient(135deg,#eff6ff,#f8fbff) !important;
+      border-color:#bfdbfe !important;
+    }
+    .subject-english {
+      background:linear-gradient(135deg,#faf5ff,#fff7ed) !important;
+      border-color:#e9d5ff !important;
+    }
+    .subject-math {
+      background:linear-gradient(135deg,#ecfdf5,#f0fdf4) !important;
+      border-color:#bbf7d0 !important;
     }
     .subject-label input[type="checkbox"] {
       width:26px;
@@ -105,7 +176,7 @@
       flex:0 0 auto;
       margin:0;
     }
-    .subject-title { font-weight:700; color:#334155; }
+    .subject-title { font-weight:800; color:#26324d; }
     .subject-badge { white-space:nowrap; }
     .class-row { padding:18px; }
     .row-label { font-size:18px !important; }
@@ -171,16 +242,23 @@
       #formSection h2 { align-items:flex-start; }
       #formSection h2 + p { margin-left:0; margin-top:6px; }
       .class-row {
-        padding:18px 14px;
+        padding:16px 14px;
         border-radius:18px;
-        background:#fff;
+        background:
+          radial-gradient(circle at top left, rgba(96,165,250,.16), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(167,139,250,.14), transparent 34%),
+          linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+        border-color:#dbeafe;
+        box-shadow:0 10px 28px rgba(37,99,235,.08);
         animation:none;
       }
-      .class-row > .flex.items-center.justify-between {
-        align-items:center;
-        gap:10px;
+      .class-row-head { margin-bottom:14px; }
+      .row-label { font-size:20px !important; line-height:1.2; }
+      .delete-row-btn {
+        min-height:38px !important;
+        padding:7px 12px;
+        font-size:15px !important;
       }
-      .row-label { font-size:22px !important; line-height:1.15; }
       .class-fields { gap:14px 12px !important; }
       #formSection label {
         font-size:16px;
@@ -198,14 +276,22 @@
       #formSection select {
         padding:12px 11px;
         border-radius:14px;
+        background:#fff;
+        border-color:#cbd5e1;
+        box-shadow:0 1px 0 rgba(255,255,255,.85), inset 0 1px 2px rgba(15,23,42,.03);
+      }
+      #formSection input:focus,
+      #formSection select:focus {
+        border-color:#60a5fa;
+        box-shadow:0 0 0 4px rgba(96,165,250,.18);
       }
       .subject-label {
         width:100%;
         grid-template-columns:38px minmax(0, 1fr) auto;
         align-items:center;
         gap:12px;
-        min-height:68px;
-        padding:14px 16px !important;
+        min-height:62px;
+        padding:12px 14px !important;
         border-radius:16px;
         justify-content:initial;
       }
@@ -480,10 +566,10 @@ function addClassRow(preset = {}) {
 
   const html = `
   <div class="class-row border border-gray-200 rounded-xl p-4 bg-gray-50" id="row-${id}">
-    <div class="flex items-center justify-between mb-3">
-      <span class="text-sm font-semibold text-gray-700 row-label">班級 #${id}</span>
+    <div class="class-row-head">
+      <span class="row-label">班級 #${id}</span>
       <button type="button" onclick="removeRow(${id})"
-        class="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors">✕ 刪除</button>
+        class="delete-row-btn transition-colors">✕ 刪除</button>
     </div>
     <div class="class-fields grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
       <div>
@@ -510,16 +596,16 @@ function addClassRow(preset = {}) {
     <div>
       <label class="text-xs text-gray-500 font-medium block mb-2">申請科目（最多 2 科）<span class="text-red-500">*</span></label>
       <div class="subject-options">
-        <label class="subject-label recommended flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors bg-white text-sm" title="官方推薦">
+        <label class="subject-label subject-chinese recommended flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors bg-white text-sm" title="官方推薦">
           <input type="checkbox" class="subject-cb" value="chinese" onchange="enforceMax(this, ${id})">
           <span class="subject-title">📖 中文閱讀素養</span>
           <span class="subject-badge text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">推薦</span>
         </label>
-        <label class="subject-label flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 transition-colors bg-white text-sm">
+        <label class="subject-label subject-english flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 transition-colors bg-white text-sm">
           <input type="checkbox" class="subject-cb" value="english" onchange="enforceMax(this, ${id})">
           <span class="subject-title">🔤 英文閱讀素養</span>
         </label>
-        <label class="subject-label recommended flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors bg-white text-sm" title="官方推薦">
+        <label class="subject-label subject-math recommended flex items-center gap-2 border-2 border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors bg-white text-sm" title="官方推薦">
           <input type="checkbox" class="subject-cb" value="math" onchange="enforceMax(this, ${id})">
           <span class="subject-title">🔢 數學素養</span>
           <span class="subject-badge text-xs bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-medium">推薦</span>
@@ -586,17 +672,6 @@ function enforceMax(cb, rowId) {
     cb.checked = false;
     showToast('每班最多只能選 2 科！');
   }
-  // Update visual state
-  row.querySelectorAll('.subject-label').forEach(label => {
-    const input = label.querySelector('input');
-    if (input.checked) {
-      label.style.borderColor = '#7c3aed';
-      label.style.background = '#f5f3ff';
-    } else {
-      label.style.borderColor = '';
-      label.style.background = '';
-    }
-  });
   // Show grade compatibility warning
   checkGradeRec(rowId);
 }
