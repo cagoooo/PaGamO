@@ -1,8 +1,8 @@
-const BUILD_VERSION = "20260626-2";
+const BUILD_VERSION = "20260627-1";
 const CACHE_NAME = `pagamo-${BUILD_VERSION}`;
 
 self.addEventListener('install', () => {
-  // prompt-to-refresh：不 skipWaiting，等使用者點「立刻重整」才換版
+  // prompt-to-refresh：不 skipWaiting，等使用者點「立刻更新」才換版
 });
 
 self.addEventListener('activate', event => {
