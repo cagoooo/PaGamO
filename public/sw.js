@@ -1,4 +1,4 @@
-const BUILD_VERSION = "__BUILD_VERSION__";
+const BUILD_VERSION = "20260626-2";
 const CACHE_NAME = `pagamo-${BUILD_VERSION}`;
 
 self.addEventListener('install', () => {
