@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <rect x="8" y="8" width="48" height="48" rx="12" fill="#eff6ff"/>
+  <path d="M18 27c0-6 4-10 10-10h8c6 0 10 4 10 10v9c0 4-3 7-7 7-3 0-5-2-6-4h-2c-1 2-3 4-6 4-4 0-7-3-7-7z" fill="#4338ca"/>
+  <path d="M23 29h8M27 25v8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="39" cy="28" r="3" fill="#facc15"/>
+  <circle cx="45" cy="24" r="3" fill="#93c5fd"/>
+  <text x="15" y="54" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#2563eb">PaG</text>
+</svg>
