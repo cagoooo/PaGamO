@@ -113,6 +113,70 @@ function escapeChat_(value) {
     .replace(/>/g, '&gt;');
 }
 
+// 每日摘要：手動執行或設定為 GAS 定時觸發（建議每天 08:00）
+// 所需 Script Properties：SUPABASE_URL、SUPABASE_ANON_KEY（可選，否則讀硬編碼 URL）
+function sendDailySummary() {
+  var supabaseUrl = PropertiesService.getScriptProperties().getProperty('SUPABASE_URL')
+    || 'https://xcnmmaayrtiklntvhdhc.supabase.co';
+  var supabaseKey = PropertiesService.getScriptProperties().getProperty('SUPABASE_ANON_KEY');
+  if (!supabaseKey) throw new Error('請在 Script Properties 設定 SUPABASE_ANON_KEY');
+
+  var res = UrlFetchApp.fetch(
+    supabaseUrl + '/rest/v1/pagamo_submissions?school_code=eq.034725&select=*',
+    {
+      method: 'get',
+      headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey },
+      muteHttpExceptions: true,
+    }
+  );
+  if (res.getResponseCode() !== 200) throw new Error('Supabase 查詢失敗：' + res.getContentText());
+
+  var rows = JSON.parse(res.getContentText());
+  pushChat_(buildDailySummaryPayload_(rows));
+}
+
+function buildDailySummaryPayload_(rows) {
+  var total = rows.length;
+  var chinese = rows.filter(function(r) { return r.subject_chinese; }).length;
+  var english = rows.filter(function(r) { return r.subject_english; }).length;
+  var math    = rows.filter(function(r) { return r.subject_math; }).length;
+  var students = rows.reduce(function(s, r) {
+    var n = (r.subject_chinese ? 1 : 0) + (r.subject_english ? 1 : 0) + (r.subject_math ? 1 : 0);
+    return s + (r.student_count || 0) * n;
+  }, 0);
+
+  var now = new Date();
+  var deadline = new Date('2026-07-03T23:59:59+08:00');
+  var daysLeft = Math.max(0, Math.ceil((deadline - now) / 86400000));
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  var timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+  var deadlineNote = daysLeft <= 0 ? '⛔ 已截止' : (daysLeft <= 2 ? '⚠️ 即將截止！' : '');
+  var summary = total > 0
+    ? '目前已填 ' + total + ' 班，授權人次 ' + students
+    : '尚無填報資料';
+
+  return {
+    text: '📊 PaGamO 每日摘要｜' + summary,
+    cardsV2: [{
+      cardId: 'pagamo-daily-' + Date.now(),
+      card: {
+        header: { title: '📊 PaGamO 每日填報摘要', subtitle: '桃園市石門國民小學｜115 學年度班級授權填報' },
+        sections: [{
+          widgets: [
+            { textParagraph: { text: '<b>' + escapeChat_(summary) + '</b>' } },
+            { decoratedText: { topLabel: '統計時間', text: escapeChat_(timeStr) } },
+            { decoratedText: { topLabel: '填報班級', text: String(total) + ' 班' } },
+            { decoratedText: { topLabel: '授權人次', text: String(students) } },
+            { decoratedText: { topLabel: '各科班級數', text: '📖中文 ' + chinese + '　🔤英文 ' + english + '　🔢數學 ' + math } },
+            { decoratedText: { topLabel: '填報截止', text: '2026/7/3（五）　距今 ' + daysLeft + ' 天 ' + deadlineNote } },
+          ],
+        }],
+      },
+    }],
+  };
+}
+
 function json_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
