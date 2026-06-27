@@ -193,6 +193,9 @@
     }
     .confirm-dialog {
       width:min(880px, 100%);
+      max-height:min(86dvh, 720px);
+      display:flex;
+      flex-direction:column;
       border-radius:22px;
       background:#fff;
       padding:clamp(22px, 3vw, 34px);
@@ -212,7 +215,9 @@
       margin-bottom:22px;
     }
     .confirm-list {
-      max-height:min(52vh, 480px);
+      flex:1 1 auto;
+      min-height:0;
+      max-height:min(52dvh, 480px);
       overflow-y:auto;
       border-radius:18px;
       background:#f8fafc;
@@ -264,6 +269,7 @@
     }
     .confirm-actions {
       display:flex;
+      flex:0 0 auto;
       justify-content:flex-end;
       gap:12px;
       margin-top:24px;
@@ -406,32 +412,65 @@
       header .flex.items-center.gap-3 { align-items:flex-start; }
       .modal-backdrop {
         align-items:flex-end;
-        padding:14px;
+        padding:10px;
       }
       .confirm-dialog {
-        max-height:calc(100vh - 28px);
+        max-height:calc(100svh - 20px);
+        max-height:calc(100dvh - 20px);
         overflow:hidden;
         border-radius:20px 20px 0 0;
+        padding:18px 16px 16px;
+      }
+      .confirm-title {
+        font-size:24px;
+        margin-bottom:6px;
+      }
+      .confirm-subtitle {
+        font-size:16px;
+        line-height:1.5;
+        margin-bottom:14px;
+      }
+      .confirm-list {
+        max-height:none;
+        padding:12px;
+        gap:10px;
+        border-radius:14px;
+      }
+      .confirm-card {
+        padding:14px;
+        border-radius:14px;
+      }
+      .confirm-card__class {
+        font-size:22px;
+      }
+      .confirm-subject {
+        font-size:15px;
+        padding:5px 9px;
       }
       .confirm-card__head {
         display:block;
+        margin-bottom:10px;
       }
       .confirm-card__meta {
         margin-top:6px;
       }
       .confirm-actions {
         display:grid;
-        grid-template-columns:1fr;
+        grid-template-columns:repeat(2, minmax(0, 1fr));
         gap:10px;
+        margin-top:12px;
       }
       .confirm-actions button {
         width:100%;
-        min-height:56px;
-        font-size:17px;
+        min-height:52px;
+        padding:10px 12px;
+        font-size:16px;
+        border-radius:14px;
       }
     }
     @media (max-width: 360px) {
       .class-fields { grid-template-columns:1fr !important; }
+      .confirm-actions { grid-template-columns:1fr; }
     }
     .site-credit { text-align:center; padding:24px 16px; font-size:13px; color:rgba(15,23,42,.55); }
     .site-credit__heart { display:inline-block; margin:0 2px; filter:saturate(1.1); }
@@ -632,7 +671,7 @@ const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const APP_VERSION = '20260627-6';
+const APP_VERSION = '20260627-13';
 const SCHOOL_NAME = '桃園市龍潭區石門國民小學';
 // Keep DB payload compatible with the current Supabase constraint/policy.
 const DB_SCHOOL_NAME = '桃園市石門國民小學';
@@ -982,6 +1021,8 @@ async function submitForm() {
 }
 
 function showConfirmModal(records) {
+  const updateBar = document.getElementById('sw-update-bar');
+  if (updateBar) updateBar.remove();
   document.getElementById('confirmList').innerHTML = records.map(r => `
     <div class="confirm-card">
       <div class="confirm-card__head">
@@ -1116,6 +1157,11 @@ addClassRow();
 
   function _showUpdateBar(waitingWorker) {
     if (document.getElementById('sw-update-bar')) return;
+    const confirmModal = document.getElementById('confirmModal');
+    if (confirmModal && !confirmModal.classList.contains('hidden')) {
+      setTimeout(function () { _showUpdateBar(waitingWorker); }, 1200);
+      return;
+    }
     const bar = document.createElement('div');
     bar.id = 'sw-update-bar';
     bar.setAttribute('role', 'alert');
