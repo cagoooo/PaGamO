@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>石門國小 115學年度 PaGamO 素養教材班級授權填報</title>
-  <meta name="description" content="桃園市石門國小 PaGamO 素養教材班級授權校內填報工具，協助彙整 3–6 年級班級、人數、申請老師與科目需求。">
+  <meta name="description" content="石門國小 PaGamO 素養教材班級授權校內填報工具，協助彙整 3–6 年級班級、人數、申請老師與科目需求。">
   <meta name="theme-color" content="#2563eb">
   <link rel="canonical" href="https://cagoooo.github.io/PaGamO/">
   <link rel="icon" href="favicon.ico" sizes="any">
@@ -191,6 +191,90 @@
       background:rgba(15,23,42,.56);
       padding:18px;
     }
+    .confirm-dialog {
+      width:min(880px, 100%);
+      border-radius:22px;
+      background:#fff;
+      padding:clamp(22px, 3vw, 34px);
+      box-shadow:0 24px 70px rgba(15,23,42,.28);
+    }
+    .confirm-title {
+      font-size:clamp(24px, 2vw, 30px);
+      line-height:1.25;
+      font-weight:800;
+      color:#172033;
+      margin-bottom:8px;
+    }
+    .confirm-subtitle {
+      font-size:clamp(16px, 1.2vw, 18px);
+      line-height:1.65;
+      color:#64748b;
+      margin-bottom:22px;
+    }
+    .confirm-list {
+      max-height:min(52vh, 480px);
+      overflow-y:auto;
+      border-radius:18px;
+      background:#f8fafc;
+      padding:16px;
+      display:grid;
+      gap:14px;
+    }
+    .confirm-card {
+      border:1px solid #dbe3ef;
+      border-radius:16px;
+      background:#fff;
+      padding:18px 20px;
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
+    }
+    .confirm-card__head {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:12px;
+    }
+    .confirm-card__class {
+      font-size:clamp(20px, 1.45vw, 24px);
+      line-height:1.25;
+      font-weight:800;
+      color:#0f172a;
+    }
+    .confirm-card__meta {
+      font-size:clamp(16px, 1.12vw, 18px);
+      line-height:1.55;
+      color:#475569;
+    }
+    .confirm-card__subjects {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .confirm-subject {
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      background:#eff6ff;
+      color:#1d4ed8;
+      border:1px solid #bfdbfe;
+      padding:6px 10px;
+      font-size:16px;
+      font-weight:800;
+      line-height:1.2;
+    }
+    .confirm-actions {
+      display:flex;
+      justify-content:flex-end;
+      gap:12px;
+      margin-top:24px;
+    }
+    .confirm-actions button {
+      min-height:56px;
+      border-radius:16px;
+      padding:12px 24px;
+      font-size:18px;
+      font-weight:800;
+    }
     @media (min-width: 1024px) {
       body { font-size:18px; }
       .form-grid { grid-template-columns:minmax(0, 1.45fr) minmax(340px, .75fr); align-items:start; }
@@ -320,6 +404,31 @@
       }
       .site-credit { padding-bottom:34px; }
       header .flex.items-center.gap-3 { align-items:flex-start; }
+      .modal-backdrop {
+        align-items:flex-end;
+        padding:14px;
+      }
+      .confirm-dialog {
+        max-height:calc(100vh - 28px);
+        overflow:hidden;
+        border-radius:20px 20px 0 0;
+      }
+      .confirm-card__head {
+        display:block;
+      }
+      .confirm-card__meta {
+        margin-top:6px;
+      }
+      .confirm-actions {
+        display:grid;
+        grid-template-columns:1fr;
+        gap:10px;
+      }
+      .confirm-actions button {
+        width:100%;
+        min-height:56px;
+        font-size:17px;
+      }
     }
     @media (max-width: 360px) {
       .class-fields { grid-template-columns:1fr !important; }
@@ -367,7 +476,7 @@
       <span class="text-4xl">🎮</span>
       <div>
         <h1 class="text-lg font-bold leading-tight">石門國小 PaGamO 素養教材班級授權填報</h1>
-        <p class="text-blue-200 text-sm mt-0.5">115 學年度第一學期・桃園市石門國民小學</p>
+        <p class="text-blue-200 text-sm mt-0.5">115 學年度第一學期・桃園市龍潭區石門國民小學</p>
       </div>
     </div>
     <div class="mt-3 flex gap-2 flex-wrap">
@@ -388,7 +497,7 @@
     <ul class="space-y-1 text-xs list-disc list-inside text-indigo-700">
       <li>以「班級」為單位填報，每班最多申請 <strong>2 科</strong></li>
       <li>科任老師任教多班，請<strong>每班獨立填寫一列</strong>（例如教 5 班→填 5 列）</li>
-      <li>本表單限定<strong>桃園市石門國民小學</strong>填報，學校名稱與學校代碼已內建</li>
+      <li>本表單限定<strong>桃園市龍潭區石門國民小學</strong>填報，學校名稱與學校代碼已內建</li>
       <li>每列班級都要填寫<strong>申請老師姓名</strong>，方便後台追蹤需求來源</li>
       <li>送出後若需修改，<strong>重新填送即可</strong>，系統以最新版本為準</li>
     </ul>
@@ -497,15 +606,15 @@
 </div>
 
 <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-  <div class="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl">
-    <h2 id="confirmTitle" class="text-xl font-bold text-slate-800 mb-2">送出前確認</h2>
-    <p class="text-slate-500 text-sm mb-4">請確認班級、人數、申請老師與科目無誤後再送出。</p>
-    <div id="confirmList" class="max-h-[50vh] overflow-y-auto rounded-xl bg-slate-50 p-4 text-left text-sm space-y-2"></div>
-    <div class="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+  <div class="confirm-dialog">
+    <h2 id="confirmTitle" class="confirm-title">送出前確認</h2>
+    <p class="confirm-subtitle">請確認班級、人數、申請老師與科目無誤後再送出。</p>
+    <div id="confirmList" class="confirm-list text-left"></div>
+    <div class="confirm-actions">
       <button type="button" onclick="closeConfirmModal()"
-        class="rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 hover:bg-slate-50">返回修改</button>
+        class="border border-slate-200 text-slate-600 hover:bg-slate-50">返回修改</button>
       <button type="button" id="confirmSubmitBtn" onclick="confirmSubmit()"
-        class="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700">確認送出</button>
+        class="bg-blue-600 text-white hover:bg-blue-700">確認送出</button>
     </div>
   </div>
 </div>
@@ -522,7 +631,7 @@ const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const SCHOOL_NAME = '桃園市石門國民小學';
+const SCHOOL_NAME = '桃園市龍潭區石門國民小學';
 const SCHOOL_CODE = '034725';
 let rowCounter = 0;
 let pendingRecords = [];
@@ -780,10 +889,12 @@ async function submitForm() {
 
 function showConfirmModal(records) {
   document.getElementById('confirmList').innerHTML = records.map(r => `
-    <div class="rounded-lg border border-slate-200 bg-white p-3">
-      <div class="font-bold text-slate-800">${escapeHtml(r.grade)}年${escapeHtml(r.class_num)}班</div>
-      <div class="text-slate-600">${escapeHtml(r.student_count)}人・${escapeHtml(r.teacher_name)}老師</div>
-      <div class="text-blue-700 font-semibold">${subjectLabel(r)}</div>
+    <div class="confirm-card">
+      <div class="confirm-card__head">
+        <div class="confirm-card__class">${escapeHtml(r.grade)}年${escapeHtml(r.class_num)}班</div>
+        <div class="confirm-card__meta">${escapeHtml(r.student_count)} 人・${escapeHtml(r.teacher_name)}老師</div>
+      </div>
+      <div class="confirm-card__subjects">${subjectLabel(r).split('、').map(s => `<span class="confirm-subject">${escapeHtml(s.trim())}</span>`).join('')}</div>
     </div>
   `).join('');
   document.getElementById('confirmModal').classList.remove('hidden');
