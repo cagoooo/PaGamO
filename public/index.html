@@ -631,6 +631,7 @@ const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const APP_VERSION = '20260627-6';
 const SCHOOL_NAME = '桃園市龍潭區石門國民小學';
 // Keep DB payload compatible with the current Supabase constraint/policy.
 const DB_SCHOOL_NAME = '桃園市石門國民小學';
@@ -803,6 +804,18 @@ function normalizeSubmissionRecords(records) {
 }
 
 async function saveSubmissionRecords(records) {
+  const endpoint = (window.PAGAMO_NOTIFY_ENDPOINT || '').trim();
+  if (endpoint) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'submit_records', records }),
+    });
+
+    if (res.ok) return;
+    console.warn('[PaGamO] Edge submit failed, falling back to direct Supabase write', res.status, await res.text());
+  }
+
   const { error } = await db.from('pagamo_submissions').upsert(records, {
     onConflict: 'school_code,grade,class_num',
     ignoreDuplicates: false,
@@ -1053,6 +1066,7 @@ function resetForm() {
 }
 
 // Init
+console.info('[PaGamO] frontend version', APP_VERSION);
 addClassRow();
 
 // Service Worker 版本更新通知

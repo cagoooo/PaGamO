@@ -10,6 +10,32 @@ type NotifyPayload = {
   detail?: string;
 };
 
+type SubmissionRecord = {
+  school_year?: number;
+  city?: string;
+  school_name?: string;
+  school_code?: string;
+  teacher_name?: string;
+  grade?: number;
+  class_num?: number;
+  student_count?: number;
+  subject_chinese?: boolean;
+  subject_english?: boolean;
+  subject_math?: boolean;
+  submitted_at?: string;
+};
+
+type SubmitPayload = {
+  action?: string;
+  records?: SubmissionRecord[];
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SCHOOL_NAME = "桃園市龍潭區石門國民小學";
+const DB_SCHOOL_NAME = "桃園市石門國民小學";
+const SCHOOL_CODE = "034725";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -39,6 +65,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await parsePayload(req);
+    if (isSubmitPayload(payload)) {
+      return await handleSubmit(payload);
+    }
+
     const webhook = await loadWebhook();
     const chatResponse = await fetch(webhook, {
       method: "POST",
@@ -56,29 +86,104 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function parsePayload(req: Request): Promise<NotifyPayload> {
+async function parsePayload(req: Request): Promise<NotifyPayload | SubmitPayload> {
   const text = await req.text();
   if (!text.trim()) return {};
   try {
-    return JSON.parse(text) as NotifyPayload;
+    return JSON.parse(text) as NotifyPayload | SubmitPayload;
   } catch {
     return { status: "error", message: "Invalid JSON payload" };
   }
 }
 
-async function loadWebhook(): Promise<string> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Supabase service credentials are not configured.");
+function isSubmitPayload(payload: NotifyPayload | SubmitPayload): payload is SubmitPayload {
+  return "action" in payload && payload.action === "submit_records";
+}
+
+async function handleSubmit(payload: SubmitPayload) {
+  const records = sanitizeRecords(payload.records || []);
+  if (!records.length) {
+    return json({ ok: false, error: "No valid submission records." }, 400);
   }
 
+  await upsertRecords(records);
+  return json({ ok: true, count: records.length }, 200);
+}
+
+function sanitizeRecords(records: SubmissionRecord[]) {
+  if (!Array.isArray(records)) return [];
+
+  return records.map((record) => {
+    const grade = Number(record.grade);
+    const classNum = Number(record.class_num);
+    const studentCount = Number(record.student_count);
+    const teacherName = String(record.teacher_name || "").trim().slice(0, 80);
+    const subjects = [
+      Boolean(record.subject_chinese),
+      Boolean(record.subject_english),
+      Boolean(record.subject_math),
+    ].filter(Boolean).length;
+
+    if (!Number.isInteger(grade) || grade < 3 || grade > 6) return null;
+    if (!Number.isInteger(classNum) || classNum < 1 || classNum > 30) return null;
+    if (!Number.isInteger(studentCount) || studentCount < 1 || studentCount > 80) return null;
+    if (!teacherName || subjects < 1 || subjects > 2) return null;
+
+    return {
+      school_year: 115,
+      city: "桃園市",
+      school_name: DB_SCHOOL_NAME,
+      school_code: SCHOOL_CODE,
+      teacher_name: teacherName,
+      grade,
+      class_num: classNum,
+      student_count: studentCount,
+      subject_chinese: Boolean(record.subject_chinese),
+      subject_english: Boolean(record.subject_english),
+      subject_math: Boolean(record.subject_math),
+      submitted_at: new Date().toISOString(),
+    };
+  }).filter((record): record is Required<SubmissionRecord> => Boolean(record));
+}
+
+async function upsertRecords(records: Required<SubmissionRecord>[]) {
+  assertSupabaseConfigured();
+
   const res = await fetch(
-    `${supabaseUrl}/rest/v1/pagamo_private_config?key=eq.google_chat_webhook&select=value`,
+    `${SUPABASE_URL}/rest/v1/pagamo_submissions?on_conflict=school_code%2Cgrade%2Cclass_num`,
+    {
+      method: "POST",
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json; charset=utf-8",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(records),
+    },
+  );
+
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(`Failed to save submissions: HTTP ${res.status} ${message}`);
+  }
+}
+
+function assertSupabaseConfigured() {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    throw new Error("Supabase service credentials are not configured.");
+  }
+}
+
+async function loadWebhook(): Promise<string> {
+  assertSupabaseConfigured();
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/pagamo_private_config?key=eq.google_chat_webhook&select=value`,
     {
       headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       },
     },
   );
@@ -100,7 +205,7 @@ function buildChatPayload(data: NotifyPayload) {
   const rows = [
     { label: "狀態", text: isSuccess ? "成功" : "失敗" },
     { label: "進度", text: data.step || (isSuccess ? "資料已寫入 Supabase" : "資料送出未完成") },
-    { label: "學校", text: data.schoolName || "桃園市石門國民小學" },
+    { label: "學校", text: data.schoolName || SCHOOL_NAME },
     { label: "時間", text: data.time || new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" }) },
   ];
 
@@ -115,7 +220,7 @@ function buildChatPayload(data: NotifyPayload) {
       card: {
         header: {
           title: isSuccess ? `✅ ${title}` : `⚠️ ${title}`,
-          subtitle: "桃園市石門國民小學｜115 學年度班級授權填報",
+          subtitle: `${SCHOOL_NAME}｜115 學年度班級授權填報`,
         },
         sections: [{
           widgets: [
