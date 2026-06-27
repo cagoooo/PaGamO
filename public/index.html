@@ -632,6 +632,8 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const SCHOOL_NAME = '桃園市龍潭區石門國民小學';
+// Keep DB payload compatible with the current Supabase constraint/policy.
+const DB_SCHOOL_NAME = '桃園市石門國民小學';
 const SCHOOL_CODE = '034725';
 let rowCounter = 0;
 let pendingRecords = [];
@@ -777,7 +779,7 @@ function collectRecords() {
     return {
       school_year: 115,
       city: '桃園市',
-      school_name: SCHOOL_NAME,
+      school_name: DB_SCHOOL_NAME,
       school_code: SCHOOL_CODE,
       teacher_name: requestTeacher,
       grade,
