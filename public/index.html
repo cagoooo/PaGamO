@@ -802,6 +802,35 @@ function normalizeSubmissionRecords(records) {
   }));
 }
 
+async function saveSubmissionRecords(records) {
+  const { error } = await db.from('pagamo_submissions').upsert(records, {
+    onConflict: 'school_code,grade,class_num',
+    ignoreDuplicates: false,
+  });
+
+  if (!error) return;
+  if (error.code !== '42501') throw error;
+
+  for (const record of records) {
+    const match = {
+      school_code: SCHOOL_CODE,
+      grade: record.grade,
+      class_num: record.class_num,
+    };
+
+    const { error: deleteError } = await db
+      .from('pagamo_submissions')
+      .delete()
+      .match(match);
+    if (deleteError) throw deleteError;
+
+    const { error: insertError } = await db
+      .from('pagamo_submissions')
+      .insert(record);
+    if (insertError) throw insertError;
+  }
+}
+
 function removeRow(id) {
   const el = document.getElementById(`row-${id}`);
   if (el) el.remove();
@@ -935,12 +964,7 @@ async function confirmSubmit() {
   const records = normalizeSubmissionRecords(pendingRecords);
 
   try {
-    // UPSERT: on conflict (school_code, grade, class_num) → update
-    const { error } = await db.from('pagamo_submissions').upsert(records, {
-      onConflict: 'school_code,grade,class_num',
-      ignoreDuplicates: false,
-    });
-    if (error) throw error;
+    await saveSubmissionRecords(records);
 
     try { localStorage.removeItem('pagamo_pending_records'); } catch (err) {}
 
@@ -962,6 +986,7 @@ async function confirmSubmit() {
       status: 'error',
       step: 'Supabase upsert 失敗，資料尚未完成送出',
       message: err.message || String(err),
+      detail: recordsSummary(records),
     });
     showToast('送出失敗，請確認網路連線後再試（' + (err.message || '') + '）');
     btn.disabled = false;
