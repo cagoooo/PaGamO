@@ -87,6 +87,31 @@
       font-size: 14px;
       color: var(--admin-muted);
     }
+    .admin-home-link {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid #dbe3ef;
+      border-radius: 12px;
+      padding: 8px 14px;
+      color: #475569;
+      background: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: color .2s, border-color .2s, background .2s, transform .2s;
+      white-space: nowrap;
+    }
+    .admin-home-link:hover,
+    .admin-home-link:focus-visible {
+      color: #2563eb;
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      outline: none;
+      transform: translateY(-1px);
+    }
     #adminSection header button {
       min-height: 40px;
       font-size: 14px;
@@ -181,6 +206,7 @@
     .modal-card .modal-text { font-size: 16px; }
     @media (max-width: 640px) {
       header { align-items:flex-start; gap:12px; }
+      header > div:first-child { width:100%; align-items:flex-start; }
       header > div:last-child { width:100%; justify-content:flex-end; flex-wrap:wrap; }
       .admin-shell {
         width: 100%;
@@ -220,6 +246,10 @@
   <!-- Header -->
   <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
     <div class="flex items-center gap-2">
+      <a href="index.html" class="admin-home-link" aria-label="返回首頁">
+        <span aria-hidden="true">←</span>
+        <span>返回首頁</span>
+      </a>
       <span class="text-xl">🎮</span>
       <div>
         <h1 class="text-sm font-bold text-gray-800">石門國小 PaGamO 授權填報後台</h1>
