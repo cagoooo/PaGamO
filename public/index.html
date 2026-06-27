@@ -793,6 +793,15 @@ function collectRecords() {
   });
 }
 
+function normalizeSubmissionRecords(records) {
+  return records.map(record => ({
+    ...record,
+    city: '桃園市',
+    school_name: DB_SCHOOL_NAME,
+    school_code: SCHOOL_CODE,
+  }));
+}
+
 function removeRow(id) {
   const el = document.getElementById(`row-${id}`);
   if (el) el.remove();
@@ -923,7 +932,7 @@ async function confirmSubmit() {
   confirmBtn.disabled = true;
   confirmBtn.textContent = '送出中...';
 
-  const records = pendingRecords;
+  const records = normalizeSubmissionRecords(pendingRecords);
 
   try {
     // UPSERT: on conflict (school_code, grade, class_num) → update
