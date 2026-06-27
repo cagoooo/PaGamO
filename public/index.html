@@ -496,6 +496,7 @@
     <p class="font-semibold mb-2">📌 填表前請注意</p>
     <ul class="space-y-1 text-xs list-disc list-inside text-indigo-700">
       <li>以「班級」為單位填報，每班最多申請 <strong>2 科</strong></li>
+      <li>三、五年級班導尚未抽籤確定正式班級，可先填<strong>暫編序號</strong>，7/31 後再由後台修正為正式班級</li>
       <li>科任老師任教多班，請<strong>每班獨立填寫一列</strong>（例如教 5 班→填 5 列）</li>
       <li>本表單限定<strong>桃園市龍潭區石門國民小學</strong>填報，學校名稱與學校代碼已內建</li>
       <li>每列班級都要填寫<strong>申請老師姓名</strong>，方便後台追蹤需求來源</li>
@@ -514,7 +515,7 @@
       <span class="bg-blue-600 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center font-bold flex-shrink-0">1</span>
       班級申請資料
     </h2>
-    <p class="text-xs text-gray-500 mb-4 ml-8">每班最多申請 <strong class="text-blue-600">2 科</strong>，每班填寫一列</p>
+    <p class="text-xs text-gray-500 mb-4 ml-8">每班最多申請 <strong class="text-blue-600">2 科</strong>；三、五年級可先用暫編序號登記</p>
 
     <div id="classRows" class="space-y-3"></div>
 
@@ -578,10 +579,10 @@
     <p class="text-sm font-semibold text-amber-800 mb-2">⚠️ 常見錯誤提醒</p>
     <ul class="text-xs text-amber-700 space-y-1.5 list-disc list-inside">
       <li>年級：目前依科目建議只開放 3–6 年級填報</li>
-      <li>班級：請填數字，如甲班／1班填 1、乙班／2班填 2</li>
+      <li>班級／暫編序號：請填數字；三、五年級班導可先填暫編序號，抽籤後再修正</li>
       <li>人數：填<strong>實際在校學生人數</strong>（不含借讀）</li>
       <li>申請老師：請填實際提出需求的老師姓名</li>
-      <li><strong>同一科目不可出現重複年級＋班級</strong>（如5年1班只能申請一次）</li>
+      <li><strong>同一科目不可出現重複年級＋班級／暫編序號</strong>（如5年暫編1只能申請一次）</li>
     </ul>
   </div>
   </aside>
@@ -667,7 +668,7 @@ function notifyChat(payload) {
 
 function recordsSummary(records) {
   return records.map(function (r) {
-    return `${r.grade}年${r.class_num}班 ${r.student_count}人 ${r.teacher_name}老師：${subjectLabel(r).replace(/[📖🔤🔢]/g, '').trim()}`;
+    return `${formatClassLabel(r)} ${r.student_count}人 ${r.teacher_name}老師：${subjectLabel(r).replace(/[📖🔤🔢]/g, '').trim()}`;
   }).join('\n');
 }
 
@@ -698,6 +699,18 @@ function setLastTeacherName(name) {
   } catch (err) {}
 }
 
+function isLotteryGrade(grade) {
+  return Number(grade) === 3 || Number(grade) === 5;
+}
+
+function formatClassLabel(record) {
+  const grade = record?.grade ?? '';
+  const classNum = record?.class_num ?? '';
+  return isLotteryGrade(grade)
+    ? `${grade}年級暫編${classNum}`
+    : `${grade}年${classNum}班`;
+}
+
 function addClassRow(preset = {}) {
   rowCounter++;
   const id = rowCounter;
@@ -716,14 +729,15 @@ function addClassRow(preset = {}) {
     <div class="class-fields grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
       <div>
         <label class="text-xs text-gray-500 font-medium">年級 <span class="text-red-500">*</span></label>
-        <select class="grade-sel mt-1 w-full border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="checkGradeRec(${id})">
+        <select class="grade-sel mt-1 w-full border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="handleGradeChange(${id})">
           <option value="">選擇年級</option>
           ${gradeOptions}
         </select>
       </div>
       <div>
-        <label class="text-xs text-gray-500 font-medium">班級 <span class="text-red-500">*</span></label>
+        <label class="class-num-label text-xs text-gray-500 font-medium">班級／暫編序號 <span class="text-red-500">*</span></label>
         <input type="number" min="1" max="99" placeholder="如：1" class="class-num mt-1 w-full border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+        <p class="class-num-hint text-[11px] text-amber-600 mt-1 leading-snug hidden">三、五年級班導可先填暫編序號，7/31 抽籤後再改正式班級。</p>
       </div>
       <div>
         <label class="text-xs text-gray-500 font-medium">學生人數 <span class="text-red-500">*</span></label>
@@ -765,7 +779,7 @@ function addClassRow(preset = {}) {
     const cb = row.querySelector(`.subject-cb[value="${subject}"]`);
     if (cb) cb.checked = true;
   });
-  checkGradeRec(id);
+  handleGradeChange(id);
   updateRowLabels();
 }
 
@@ -868,6 +882,30 @@ function enforceMax(cb, rowId) {
   checkGradeRec(rowId);
 }
 
+function handleGradeChange(rowId) {
+  const row = document.getElementById(`row-${rowId}`);
+  if (!row) return;
+
+  const grade = row.querySelector('.grade-sel').value;
+  const label = row.querySelector('.class-num-label');
+  const input = row.querySelector('.class-num');
+  const hint = row.querySelector('.class-num-hint');
+  const lotteryGrade = isLotteryGrade(grade);
+
+  if (label) {
+    label.innerHTML = `${lotteryGrade ? '暫編序號' : '班級'} <span class="text-red-500">*</span>`;
+  }
+  if (input) {
+    input.placeholder = lotteryGrade ? '如：1（暫編）' : '如：1';
+    input.setAttribute('aria-label', lotteryGrade ? '暫編序號' : '班級');
+  }
+  if (hint) {
+    hint.classList.toggle('hidden', !lotteryGrade);
+  }
+
+  checkGradeRec(rowId);
+}
+
 function checkGradeRec(rowId) {
   const row = document.getElementById(`row-${rowId}`);
   if (!row) return;
@@ -918,14 +956,17 @@ function validateForm() {
 
     if (!grade) { showToast(`第 ${n} 班：請選擇年級`); return false; }
     if (parseInt(grade) < 3 || parseInt(grade) > 6) { showToast(`第 ${n} 班：目前只開放 3–6 年級填報`); return false; }
-    if (!classNum || parseInt(classNum) < 1) { showToast(`第 ${n} 班：請填入班級`); return false; }
+    if (!classNum || parseInt(classNum) < 1) {
+      showToast(`第 ${n} 列：請填入${isLotteryGrade(grade) ? '暫編序號' : '班級'}`);
+      return false;
+    }
     if (!count || parseInt(count) < 1) { showToast(`第 ${n} 班：請填入學生人數`); return false; }
     if (!row.querySelector('.request-teacher').value.trim()) { showToast(`第 ${n} 班：請填寫申請老師姓名`); return false; }
     if (subs.length === 0) { showToast(`第 ${n} 班：請至少選一個科目`); return false; }
 
     const key = `${grade}-${classNum}`;
     if (seen.has(key)) {
-      showToast(`${grade}年${classNum}班 重複出現！請確認班級是否正確`);
+      showToast(`${formatClassLabel({ grade, class_num: classNum })} 重複出現！請確認是否正確`);
       return false;
     }
     seen.add(key);
@@ -944,7 +985,7 @@ function showConfirmModal(records) {
   document.getElementById('confirmList').innerHTML = records.map(r => `
     <div class="confirm-card">
       <div class="confirm-card__head">
-        <div class="confirm-card__class">${escapeHtml(r.grade)}年${escapeHtml(r.class_num)}班</div>
+        <div class="confirm-card__class">${escapeHtml(formatClassLabel(r))}</div>
         <div class="confirm-card__meta">${escapeHtml(r.student_count)} 人・${escapeHtml(r.teacher_name)}老師</div>
       </div>
       <div class="confirm-card__subjects">${subjectLabel(r).split('、').map(s => `<span class="confirm-subject">${escapeHtml(s.trim())}</span>`).join('')}</div>
@@ -1042,7 +1083,7 @@ function showSuccess(school, records) {
 
   const detail = records.map(r =>
     `<div class="py-1.5 border-b border-gray-200 last:border-0 flex items-center justify-between">
-      <span class="font-semibold">${escapeHtml(r.grade)}年${escapeHtml(r.class_num)}班</span>
+      <span class="font-semibold">${escapeHtml(formatClassLabel(r))}</span>
       <span class="text-gray-500 text-xs">${escapeHtml(r.student_count)}人・${escapeHtml(r.teacher_name)}老師</span>
       <span class="text-violet-600 text-xs">${subjectLabel(r)}</span>
     </div>`
