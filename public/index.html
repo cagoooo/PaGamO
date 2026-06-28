@@ -180,7 +180,10 @@
     .subject-badge { white-space:nowrap; }
     .class-row { padding:18px; }
     .row-label { font-size:18px !important; }
-    #successSection { font-size:17px; }
+    #successSection {
+      font-size:17px;
+      scroll-margin-top:calc(env(safe-area-inset-top, 0px) + 24px);
+    }
     .modal-backdrop {
       position:fixed;
       inset:0;
@@ -671,7 +674,7 @@ const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const APP_VERSION = '20260627-13';
+const APP_VERSION = '20260627-14';
 const SCHOOL_NAME = '桃園市龍潭區石門國民小學';
 // Keep DB payload compatible with the current Supabase constraint/policy.
 const DB_SCHOOL_NAME = '桃園市石門國民小學';
@@ -1118,7 +1121,8 @@ function subjectLabel(r) {
 
 function showSuccess(school, records) {
   document.getElementById('formSection').classList.add('hidden');
-  document.getElementById('successSection').classList.remove('hidden');
+  const successSection = document.getElementById('successSection');
+  successSection.classList.remove('hidden');
   document.getElementById('successSchool').textContent = `📍 ${school}`;
   document.getElementById('successCount').textContent = `共送出 ${records.length} 個班級的申請資料`;
 
@@ -1130,7 +1134,9 @@ function showSuccess(school, records) {
     </div>`
   ).join('');
   document.getElementById('successDetail').innerHTML = detail;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  requestAnimationFrame(() => {
+    successSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 }
 
 function resetForm() {
