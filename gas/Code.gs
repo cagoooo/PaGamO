@@ -146,7 +146,7 @@ function buildDailySummaryPayload_(rows) {
   }, 0);
 
   var now = new Date();
-  var deadline = new Date('2026-07-03T23:59:59+08:00');
+  var deadline = new Date('2026-07-01T23:59:59+08:00');
   var daysLeft = Math.max(0, Math.ceil((deadline - now) / 86400000));
   var pad = function(n) { return String(n).padStart(2, '0'); };
   var timeStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
@@ -169,7 +169,7 @@ function buildDailySummaryPayload_(rows) {
             { decoratedText: { topLabel: '填報班級', text: String(total) + ' 班' } },
             { decoratedText: { topLabel: '授權人次', text: String(students) } },
             { decoratedText: { topLabel: '各科班級數', text: '📖中文 ' + chinese + '　🔤英文 ' + english + '　🔢數學 ' + math } },
-            { decoratedText: { topLabel: '填報截止', text: '2026/7/3（五）　距今 ' + daysLeft + ' 天 ' + deadlineNote } },
+            { decoratedText: { topLabel: '填報截止', text: '2026/7/1（三）　距今 ' + daysLeft + ' 天 ' + deadlineNote } },
           ],
         }],
       },
