@@ -753,6 +753,22 @@ function mergeSubjectCounts(target, counts) {
   });
 }
 
+function subjectKeysForRow(row) {
+  return ['subject_chinese', 'subject_english', 'subject_math'].filter(subjectKey => row[subjectKey]);
+}
+
+function applyRecoveredSubjectOverride(record, row) {
+  if (!row.recovery_note) return;
+  const teacherName = String(row.teacher_name || '').trim();
+  const studentCount = Number(row.student_count || 0);
+  if (!record._recoveredSubjectKeys) record._recoveredSubjectKeys = new Set();
+  subjectKeysForRow(row).forEach(subjectKey => {
+    record._subjectTeachers[subjectKey] = teacherName ? [teacherName] : [];
+    record._subjectStudentCounts[subjectKey] = studentCount ? [studentCount] : [];
+    record._recoveredSubjectKeys.add(subjectKey);
+  });
+}
+
 function getSubjectTeacher(record, subjectKey) {
   const names = record._subjectTeachers?.[subjectKey] || [];
   return names.length ? names.join('、') : (record.teacher_name || '');
@@ -784,9 +800,11 @@ function normalizeSubmissionRows(rows) {
           _studentCounts: studentCount ? [studentCount] : [],
           _subjectTeachers: getRowSubjectTeachers(row),
           _subjectStudentCounts: getRowSubjectStudentCounts(row),
+          _recoveredSubjectKeys: new Set(),
           _duplicateCount: 1,
           _hasRecoveredRecord: Boolean(row.recovery_note),
         });
+        applyRecoveredSubjectOverride(map.get(key), row);
         return;
       }
 
@@ -799,13 +817,26 @@ function normalizeSubmissionRows(rows) {
       }
       current._hasRecoveredRecord = Boolean(current._hasRecoveredRecord || row.recovery_note);
       const rowSubjectTeachers = getRowSubjectTeachers(row);
-      mergeUniqueNames(current._subjectTeachers.subject_chinese, rowSubjectTeachers.subject_chinese);
-      mergeUniqueNames(current._subjectTeachers.subject_english, rowSubjectTeachers.subject_english);
-      mergeUniqueNames(current._subjectTeachers.subject_math, rowSubjectTeachers.subject_math);
+      if (!current._recoveredSubjectKeys.has('subject_chinese')) {
+        mergeUniqueNames(current._subjectTeachers.subject_chinese, rowSubjectTeachers.subject_chinese);
+      }
+      if (!current._recoveredSubjectKeys.has('subject_english')) {
+        mergeUniqueNames(current._subjectTeachers.subject_english, rowSubjectTeachers.subject_english);
+      }
+      if (!current._recoveredSubjectKeys.has('subject_math')) {
+        mergeUniqueNames(current._subjectTeachers.subject_math, rowSubjectTeachers.subject_math);
+      }
       const rowSubjectStudentCounts = getRowSubjectStudentCounts(row);
-      mergeSubjectCounts(current._subjectStudentCounts.subject_chinese, rowSubjectStudentCounts.subject_chinese);
-      mergeSubjectCounts(current._subjectStudentCounts.subject_english, rowSubjectStudentCounts.subject_english);
-      mergeSubjectCounts(current._subjectStudentCounts.subject_math, rowSubjectStudentCounts.subject_math);
+      if (!current._recoveredSubjectKeys.has('subject_chinese')) {
+        mergeSubjectCounts(current._subjectStudentCounts.subject_chinese, rowSubjectStudentCounts.subject_chinese);
+      }
+      if (!current._recoveredSubjectKeys.has('subject_english')) {
+        mergeSubjectCounts(current._subjectStudentCounts.subject_english, rowSubjectStudentCounts.subject_english);
+      }
+      if (!current._recoveredSubjectKeys.has('subject_math')) {
+        mergeSubjectCounts(current._subjectStudentCounts.subject_math, rowSubjectStudentCounts.subject_math);
+      }
+      applyRecoveredSubjectOverride(current, row);
 
       current.subject_chinese = Boolean(current.subject_chinese || row.subject_chinese);
       current.subject_english = Boolean(current.subject_english || row.subject_english);
@@ -833,7 +864,7 @@ function normalizeSubmissionRows(rows) {
     if (row._hasRecoveredRecord) {
       duplicateClassIssues.push(`${row.grade}年${row.class_num}班含救援資料，請確認各科分頁都有列入`);
     }
-    const { _teacherNames, _studentCounts, _duplicateCount, _hasRecoveredRecord, ...clean } = row;
+    const { _teacherNames, _studentCounts, _duplicateCount, _hasRecoveredRecord, _recoveredSubjectKeys, ...clean } = row;
     return clean;
   });
 
@@ -857,7 +888,7 @@ function getStudentStats(rows = allData) {
 
 async function loadRecoveredSubmissions() {
   try {
-    const res = await fetch(`${RECOVERED_SUBMISSIONS_URL}?v=20260702-02`, { cache: 'no-store' });
+    const res = await fetch(`${RECOVERED_SUBMISSIONS_URL}?v=20260702-03`, { cache: 'no-store' });
     if (!res.ok) return [];
     const rows = await res.json();
     return Array.isArray(rows) ? rows.map(row => ({ ...row, _isRecovered: true })) : [];
