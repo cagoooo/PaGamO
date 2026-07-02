@@ -136,13 +136,39 @@ function sendDailySummary() {
 }
 
 function buildDailySummaryPayload_(rows) {
-  var total = rows.length;
-  var chinese = rows.filter(function(r) { return r.subject_chinese; }).length;
-  var english = rows.filter(function(r) { return r.subject_english; }).length;
-  var math    = rows.filter(function(r) { return r.subject_math; }).length;
-  var students = rows.reduce(function(s, r) {
+  var classMap = {};
+  rows.forEach(function(r) {
+    var key = [r.school_code || '034725', r.grade || 0, r.class_num || 0].join('-');
+    var current = classMap[key];
+    if (!current) {
+      classMap[key] = Object.assign({}, r, {
+        student_count: Number(r.student_count || 0),
+        subject_chinese: Boolean(r.subject_chinese),
+        subject_english: Boolean(r.subject_english),
+        subject_math: Boolean(r.subject_math),
+      });
+      return;
+    }
+    current.subject_chinese = current.subject_chinese || Boolean(r.subject_chinese);
+    current.subject_english = current.subject_english || Boolean(r.subject_english);
+    current.subject_math = current.subject_math || Boolean(r.subject_math);
+    if (new Date(r.submitted_at || 0) >= new Date(current.submitted_at || 0)) {
+      current.student_count = Number(r.student_count || current.student_count || 0);
+      current.submitted_at = r.submitted_at || current.submitted_at;
+    }
+  });
+
+  var classRows = Object.keys(classMap).map(function(key) { return classMap[key]; });
+  var total = classRows.length;
+  var chinese = classRows.filter(function(r) { return r.subject_chinese; }).length;
+  var english = classRows.filter(function(r) { return r.subject_english; }).length;
+  var math    = classRows.filter(function(r) { return r.subject_math; }).length;
+  var students = classRows.reduce(function(s, r) {
+    return s + Number(r.student_count || 0);
+  }, 0);
+  var subjectAuthorizations = classRows.reduce(function(s, r) {
     var n = (r.subject_chinese ? 1 : 0) + (r.subject_english ? 1 : 0) + (r.subject_math ? 1 : 0);
-    return s + (r.student_count || 0) * n;
+    return s + Number(r.student_count || 0) * n;
   }, 0);
 
   var now = new Date();
@@ -153,7 +179,7 @@ function buildDailySummaryPayload_(rows) {
 
   var deadlineNote = daysLeft <= 0 ? '⛔ 已截止' : (daysLeft <= 2 ? '⚠️ 即將截止！' : '');
   var summary = total > 0
-    ? '目前已填 ' + total + ' 班，授權人次 ' + students
+    ? '目前已填 ' + total + ' 班，不重複學生 ' + students + ' 人'
     : '尚無填報資料';
 
   return {
@@ -167,7 +193,8 @@ function buildDailySummaryPayload_(rows) {
             { textParagraph: { text: '<b>' + escapeChat_(summary) + '</b>' } },
             { decoratedText: { topLabel: '統計時間', text: escapeChat_(timeStr) } },
             { decoratedText: { topLabel: '填報班級', text: String(total) + ' 班' } },
-            { decoratedText: { topLabel: '授權人次', text: String(students) } },
+            { decoratedText: { topLabel: '不重複學生數', text: String(students) + ' 人' } },
+            { decoratedText: { topLabel: '科目授權人次', text: String(subjectAuthorizations) } },
             { decoratedText: { topLabel: '各科班級數', text: '📖中文 ' + chinese + '　🔤英文 ' + english + '　🔢數學 ' + math } },
             { decoratedText: { topLabel: '填報截止', text: '2026/7/1（三）　距今 ' + daysLeft + ' 天 ' + deadlineNote } },
           ],
