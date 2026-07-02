@@ -148,6 +148,7 @@ function sanitizeRecords(records: SubmissionRecord[]) {
 
 async function upsertRecords(records: Required<SubmissionRecord>[]) {
   assertSupabaseConfigured();
+  const mergedRecords = await mergeWithExistingRecords(records);
 
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/pagamo_submissions?on_conflict=school_code%2Cgrade%2Cclass_num`,
@@ -159,7 +160,7 @@ async function upsertRecords(records: Required<SubmissionRecord>[]) {
         "Content-Type": "application/json; charset=utf-8",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify(records),
+      body: JSON.stringify(mergedRecords),
     },
   );
 
@@ -167,6 +168,63 @@ async function upsertRecords(records: Required<SubmissionRecord>[]) {
     const message = await res.text();
     throw new Error(`Failed to save submissions: HTTP ${res.status} ${message}`);
   }
+}
+
+async function mergeWithExistingRecords(records: Required<SubmissionRecord>[]) {
+  const merged: Required<SubmissionRecord>[] = [];
+
+  for (const record of records) {
+    const query = new URLSearchParams({
+      school_code: `eq.${SCHOOL_CODE}`,
+      grade: `eq.${record.grade}`,
+      class_num: `eq.${record.class_num}`,
+      select: "*",
+      limit: "1",
+    });
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pagamo_submissions?${query.toString()}`, {
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+    });
+    if (!res.ok) {
+      const message = await res.text();
+      throw new Error(`Failed to read existing submission: HTTP ${res.status} ${message}`);
+    }
+
+    const existingRows = await res.json() as Required<SubmissionRecord>[];
+    const existing = existingRows[0];
+    if (!existing) {
+      merged.push(record);
+      continue;
+    }
+
+    const teacherNames = [existing.teacher_name, record.teacher_name]
+      .map((name) => String(name || "").trim())
+      .filter(Boolean)
+      .filter((name, index, names) => names.indexOf(name) === index);
+    const next = {
+      ...existing,
+      ...record,
+      teacher_name: teacherNames.join("、"),
+      student_count: Number(record.student_count || existing.student_count || 0),
+      subject_chinese: Boolean(existing.subject_chinese || record.subject_chinese),
+      subject_english: Boolean(existing.subject_english || record.subject_english),
+      subject_math: Boolean(existing.subject_math || record.subject_math),
+      submitted_at: record.submitted_at,
+    };
+    const subjectCount = [
+      next.subject_chinese,
+      next.subject_english,
+      next.subject_math,
+    ].filter(Boolean).length;
+    if (subjectCount > 2) {
+      throw new Error(`${record.grade}年${record.class_num}班合併後會超過每班 2 科限制，已停止覆蓋舊資料。`);
+    }
+    merged.push(next);
+  }
+
+  return merged;
 }
 
 function assertSupabaseConfigured() {

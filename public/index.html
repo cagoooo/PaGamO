@@ -674,7 +674,7 @@ const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const APP_VERSION = '20260702-01';
+const APP_VERSION = '20260702-02';
 const SCHOOL_NAME = '桃園市龍潭區石門國民小學';
 // Keep DB payload compatible with the current Supabase constraint/policy.
 const DB_SCHOOL_NAME = '桃園市石門國民小學';
@@ -859,6 +859,49 @@ function normalizeSubmissionRecords(records) {
   }));
 }
 
+async function mergeWithExistingRecords(records) {
+  const merged = [];
+
+  for (const record of mergedRecords) {
+    const { data: existingRows, error: selectError } = await db
+      .from('pagamo_submissions')
+      .select('*')
+      .eq('school_code', SCHOOL_CODE)
+      .eq('grade', record.grade)
+      .eq('class_num', record.class_num)
+      .limit(1);
+    if (selectError) throw selectError;
+
+    const existing = existingRows && existingRows[0];
+    if (!existing) {
+      merged.push(record);
+      continue;
+    }
+
+    const teacherNames = [existing.teacher_name, record.teacher_name]
+      .map(name => String(name || '').trim())
+      .filter(Boolean)
+      .filter((name, index, names) => names.indexOf(name) === index);
+    const next = {
+      ...existing,
+      ...record,
+      teacher_name: teacherNames.join('、'),
+      student_count: Number(record.student_count || existing.student_count || 0),
+      subject_chinese: Boolean(existing.subject_chinese || record.subject_chinese),
+      subject_english: Boolean(existing.subject_english || record.subject_english),
+      subject_math: Boolean(existing.subject_math || record.subject_math),
+      submitted_at: record.submitted_at,
+    };
+    const subjectCount = [next.subject_chinese, next.subject_english, next.subject_math].filter(Boolean).length;
+    if (subjectCount > 2) {
+      throw new Error(`${formatClassLabel(record)} 已有其他科目資料，合併後會超過每班 2 科限制；請聯繫資訊組長人工確認，系統已停止覆蓋舊資料。`);
+    }
+    merged.push(next);
+  }
+
+  return merged;
+}
+
 async function saveSubmissionRecords(records) {
   const endpoint = (window.PAGAMO_NOTIFY_ENDPOINT || '').trim();
   if (endpoint) {
@@ -872,7 +915,8 @@ async function saveSubmissionRecords(records) {
     console.warn('[PaGamO] Edge submit failed, falling back to direct Supabase write', res.status, await res.text());
   }
 
-  const { error } = await db.from('pagamo_submissions').upsert(records, {
+  const mergedRecords = await mergeWithExistingRecords(records);
+  const { error } = await db.from('pagamo_submissions').upsert(mergedRecords, {
     onConflict: 'school_code,grade,class_num',
     ignoreDuplicates: false,
   });
