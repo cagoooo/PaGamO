@@ -435,7 +435,8 @@
       </div>
       <div class="stat-card bg-white border border-gray-100 text-center">
         <div class="text-2xl font-bold text-violet-600" id="statStudents">—</div>
-        <div class="text-xs text-gray-500 mt-1">授權總人次</div>
+        <div class="text-xs text-gray-500 mt-1">不重複學生數</div>
+        <div class="text-[11px] text-gray-400 mt-0.5" id="statSubjectStudents">科目授權 — 人次</div>
       </div>
       <div class="stat-card bg-white border border-gray-100 text-center">
         <div class="text-sm font-bold text-emerald-600 leading-tight" id="statUpdated">—</div>
@@ -618,6 +619,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let allData = [];
 let editTarget = null;
 let deleteTarget = null;
+let duplicateClassIssues = [];
 
 const READ_ME_ROWS = [
   ['📝 填寫步驟說明'],
@@ -697,6 +699,90 @@ function getFilteredRows() {
   });
 }
 
+function classKey(row) {
+  return [
+    row.school_code || '034725',
+    Number(row.grade || 0),
+    Number(row.class_num || 0),
+  ].join('-');
+}
+
+function normalizeSubmissionRows(rows) {
+  duplicateClassIssues = [];
+  const map = new Map();
+
+  rows
+    .slice()
+    .sort((a, b) => new Date(a.submitted_at || 0) - new Date(b.submitted_at || 0))
+    .forEach(row => {
+      const key = classKey(row);
+      const studentCount = Number(row.student_count || 0);
+      const teacherName = String(row.teacher_name || '').trim();
+      const current = map.get(key);
+
+      if (!current) {
+        map.set(key, {
+          ...row,
+          student_count: studentCount,
+          _teacherNames: teacherName ? [teacherName] : [],
+          _studentCounts: studentCount ? [studentCount] : [],
+          _duplicateCount: 1,
+        });
+        return;
+      }
+
+      current._duplicateCount += 1;
+      if (teacherName && !current._teacherNames.includes(teacherName)) {
+        current._teacherNames.push(teacherName);
+      }
+      if (studentCount && !current._studentCounts.includes(studentCount)) {
+        current._studentCounts.push(studentCount);
+      }
+
+      current.subject_chinese = Boolean(current.subject_chinese || row.subject_chinese);
+      current.subject_english = Boolean(current.subject_english || row.subject_english);
+      current.subject_math = Boolean(current.subject_math || row.subject_math);
+      current.student_count = studentCount || current.student_count;
+      current.teacher_name = current._teacherNames.join('、');
+
+      if (new Date(row.submitted_at || 0) >= new Date(current.submitted_at || 0)) {
+        current.id = row.id || current.id;
+        current.submitted_at = row.submitted_at || current.submitted_at;
+        current.updated_at = row.updated_at || current.updated_at;
+        current.school_year = row.school_year || current.school_year;
+        current.school_name = row.school_name || current.school_name;
+      }
+    });
+
+  const merged = [...map.values()].map(row => {
+    if (row._duplicateCount > 1) {
+      const label = `${row.grade}年${row.class_num}班`;
+      duplicateClassIssues.push(`${label} 有 ${row._duplicateCount} 筆同班資料，已合併計算避免重複算學生`);
+      if (row._studentCounts.length > 1) {
+        duplicateClassIssues.push(`${label} 學生人數不一致（${row._studentCounts.join('、')}），目前採最新填報 ${row.student_count} 人`);
+      }
+    }
+    const { _teacherNames, _studentCounts, _duplicateCount, ...clean } = row;
+    return clean;
+  });
+
+  return merged.sort((a, b) =>
+    String(a.school_code || '').localeCompare(String(b.school_code || '')) ||
+    Number(a.grade || 0) - Number(b.grade || 0) ||
+    Number(a.class_num || 0) - Number(b.class_num || 0)
+  );
+}
+
+function getStudentStats(rows = allData) {
+  return rows.reduce((stats, row) => {
+    const studentCount = Number(row.student_count || 0);
+    const subjectCount = subjectNames(row).length;
+    stats.uniqueStudents += studentCount;
+    stats.subjectAuthorizations += studentCount * subjectCount;
+    return stats;
+  }, { uniqueStudents: 0, subjectAuthorizations: 0 });
+}
+
 function resetFilters() {
   ['searchFilter', 'gradeFilter', 'subjectFilter', 'schoolFilter'].forEach(id => {
     const el = document.getElementById(id);
@@ -736,7 +822,7 @@ async function loadData() {
 
     if (error) throw error;
 
-    allData = data || [];
+    allData = normalizeSubmissionRows(data || []);
     updateStats();
     updateSchoolFilter();
     renderQualityPanel();
@@ -756,17 +842,14 @@ async function loadData() {
 
 function updateStats() {
   const schools = new Set(allData.map(r => r.school_code)).size;
-  // Total student-subject authorizations
-  const students = allData.reduce((s, r) => {
-    let n = (r.subject_chinese ? 1 : 0) + (r.subject_english ? 1 : 0) + (r.subject_math ? 1 : 0);
-    return s + r.student_count * n;
-  }, 0);
+  const { uniqueStudents, subjectAuthorizations } = getStudentStats();
   const dates = allData.map(r => new Date(r.submitted_at)).sort((a,b) => b-a);
   const latest = dates[0];
 
   document.getElementById('statSchools').textContent = schools;
   document.getElementById('statClasses').textContent = allData.length;
-  document.getElementById('statStudents').textContent = students.toLocaleString();
+  document.getElementById('statStudents').textContent = uniqueStudents.toLocaleString();
+  document.getElementById('statSubjectStudents').textContent = `科目授權 ${subjectAuthorizations.toLocaleString()} 人次`;
   document.getElementById('statUpdated').textContent = latest
     ? `${latest.getMonth()+1}/${latest.getDate()} ${latest.getHours()}:${String(latest.getMinutes()).padStart(2,'0')}`
     : '—';
@@ -800,6 +883,7 @@ function renderSchoolSummary() {
   }
 
   document.getElementById('schoolSummary').innerHTML = schools.map(s => {
+    const subjectAuthorizations = (s.ch + s.en + s.ma);
     const subs = [];
     if (s.ch) subs.push(`<span class="text-blue-600">中文 ${s.ch}班</span>`);
     if (s.en) subs.push(`<span class="text-purple-600">英文 ${s.en}班</span>`);
@@ -811,7 +895,8 @@ function renderSchoolSummary() {
         <span class="text-gray-400 ml-2 font-mono text-xs">${escapeHtml(s.code)}</span>
       </div>
       <div class="flex flex-wrap items-center gap-3 lg:justify-end lg:text-right flex-shrink-0 lg:ml-2">
-        <span class="text-gray-500">${escapeHtml(s.classes)}班・${escapeHtml(s.students)}人</span>
+        <span class="text-gray-500">${escapeHtml(s.classes)}班・不重複 ${escapeHtml(s.students)} 人</span>
+        <span class="text-gray-400">科目班次 ${escapeHtml(subjectAuthorizations)}</span>
         <span class="flex gap-2">${subs.join('・')}</span>
       </div>
     </div>`;
@@ -827,7 +912,8 @@ function subjectNames(r) {
 }
 
 function renderQualityPanel() {
-  const issues = [];
+  const issues = [...duplicateClassIssues];
+  const { uniqueStudents, subjectAuthorizations } = getStudentStats();
   allData.forEach(r => {
     if (!r.teacher_name) issues.push(`${r.grade}年${r.class_num}班缺申請老師`);
     if (!r.student_count || Number(r.student_count) <= 0) issues.push(`${r.grade}年${r.class_num}班人數異常`);
@@ -846,7 +932,8 @@ function renderQualityPanel() {
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
       <div class="text-sm text-slate-500">班級筆數</div>
       <div class="text-2xl font-bold text-slate-800">${allData.length}</div>
-      <div class="text-sm text-slate-500 mt-1">正式匯出前請確認各科分頁筆數</div>
+      <div class="text-sm text-slate-500 mt-1">已依學校、年級、班級去重後計算</div>
+      <div class="text-sm text-slate-500 mt-1">不重複學生 ${uniqueStudents.toLocaleString()} 人；科目授權 ${subjectAuthorizations.toLocaleString()} 人次</div>
     </div>
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
       <div class="text-sm text-slate-500 mb-2">各科班級數</div>
