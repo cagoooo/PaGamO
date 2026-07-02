@@ -615,11 +615,13 @@
 const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const RECOVERED_SUBMISSIONS_URL = './recovered-submissions.json';
 
 let allData = [];
 let editTarget = null;
 let deleteTarget = null;
 let duplicateClassIssues = [];
+let recoveredSubmissionCount = 0;
 
 const READ_ME_ROWS = [
   ['📝 填寫步驟說明'],
@@ -707,6 +709,60 @@ function classKey(row) {
   ].join('-');
 }
 
+function getRowSubjectTeachers(row) {
+  const teacherName = String(row.teacher_name || '').trim();
+  const teachers = {
+    subject_chinese: [],
+    subject_english: [],
+    subject_math: [],
+  };
+  if (teacherName) {
+    if (row.subject_chinese) teachers.subject_chinese.push(teacherName);
+    if (row.subject_english) teachers.subject_english.push(teacherName);
+    if (row.subject_math) teachers.subject_math.push(teacherName);
+  }
+  return teachers;
+}
+
+function getRowSubjectStudentCounts(row) {
+  const studentCount = Number(row.student_count || 0);
+  const counts = {
+    subject_chinese: [],
+    subject_english: [],
+    subject_math: [],
+  };
+  if (studentCount) {
+    if (row.subject_chinese) counts.subject_chinese.push(studentCount);
+    if (row.subject_english) counts.subject_english.push(studentCount);
+    if (row.subject_math) counts.subject_math.push(studentCount);
+  }
+  return counts;
+}
+
+function mergeUniqueNames(target, names) {
+  names.forEach(name => {
+    const clean = String(name || '').trim();
+    if (clean && !target.includes(clean)) target.push(clean);
+  });
+}
+
+function mergeSubjectCounts(target, counts) {
+  counts.forEach(count => {
+    const n = Number(count || 0);
+    if (n && !target.includes(n)) target.push(n);
+  });
+}
+
+function getSubjectTeacher(record, subjectKey) {
+  const names = record._subjectTeachers?.[subjectKey] || [];
+  return names.length ? names.join('、') : (record.teacher_name || '');
+}
+
+function getSubjectStudentCount(record, subjectKey) {
+  const counts = record._subjectStudentCounts?.[subjectKey] || [];
+  return counts.length ? counts[counts.length - 1] : Number(record.student_count || 0);
+}
+
 function normalizeSubmissionRows(rows) {
   duplicateClassIssues = [];
   const map = new Map();
@@ -726,7 +782,10 @@ function normalizeSubmissionRows(rows) {
           student_count: studentCount,
           _teacherNames: teacherName ? [teacherName] : [],
           _studentCounts: studentCount ? [studentCount] : [],
+          _subjectTeachers: getRowSubjectTeachers(row),
+          _subjectStudentCounts: getRowSubjectStudentCounts(row),
           _duplicateCount: 1,
+          _hasRecoveredRecord: Boolean(row.recovery_note),
         });
         return;
       }
@@ -738,6 +797,15 @@ function normalizeSubmissionRows(rows) {
       if (studentCount && !current._studentCounts.includes(studentCount)) {
         current._studentCounts.push(studentCount);
       }
+      current._hasRecoveredRecord = Boolean(current._hasRecoveredRecord || row.recovery_note);
+      const rowSubjectTeachers = getRowSubjectTeachers(row);
+      mergeUniqueNames(current._subjectTeachers.subject_chinese, rowSubjectTeachers.subject_chinese);
+      mergeUniqueNames(current._subjectTeachers.subject_english, rowSubjectTeachers.subject_english);
+      mergeUniqueNames(current._subjectTeachers.subject_math, rowSubjectTeachers.subject_math);
+      const rowSubjectStudentCounts = getRowSubjectStudentCounts(row);
+      mergeSubjectCounts(current._subjectStudentCounts.subject_chinese, rowSubjectStudentCounts.subject_chinese);
+      mergeSubjectCounts(current._subjectStudentCounts.subject_english, rowSubjectStudentCounts.subject_english);
+      mergeSubjectCounts(current._subjectStudentCounts.subject_math, rowSubjectStudentCounts.subject_math);
 
       current.subject_chinese = Boolean(current.subject_chinese || row.subject_chinese);
       current.subject_english = Boolean(current.subject_english || row.subject_english);
@@ -762,7 +830,10 @@ function normalizeSubmissionRows(rows) {
         duplicateClassIssues.push(`${label} 學生人數不一致（${row._studentCounts.join('、')}），目前採最新填報 ${row.student_count} 人`);
       }
     }
-    const { _teacherNames, _studentCounts, _duplicateCount, ...clean } = row;
+    if (row._hasRecoveredRecord) {
+      duplicateClassIssues.push(`${row.grade}年${row.class_num}班含救援資料，請確認各科分頁都有列入`);
+    }
+    const { _teacherNames, _studentCounts, _duplicateCount, _hasRecoveredRecord, ...clean } = row;
     return clean;
   });
 
@@ -776,11 +847,24 @@ function normalizeSubmissionRows(rows) {
 function getStudentStats(rows = allData) {
   return rows.reduce((stats, row) => {
     const studentCount = Number(row.student_count || 0);
-    const subjectCount = subjectNames(row).length;
     stats.uniqueStudents += studentCount;
-    stats.subjectAuthorizations += studentCount * subjectCount;
+    ['subject_chinese', 'subject_english', 'subject_math'].forEach(subjectKey => {
+      if (row[subjectKey]) stats.subjectAuthorizations += getSubjectStudentCount(row, subjectKey);
+    });
     return stats;
   }, { uniqueStudents: 0, subjectAuthorizations: 0 });
+}
+
+async function loadRecoveredSubmissions() {
+  try {
+    const res = await fetch(`${RECOVERED_SUBMISSIONS_URL}?v=20260702-02`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows.map(row => ({ ...row, _isRecovered: true })) : [];
+  } catch (error) {
+    console.warn('[PaGamO] recovered submissions unavailable', error);
+    return [];
+  }
 }
 
 function resetFilters() {
@@ -822,7 +906,9 @@ async function loadData() {
 
     if (error) throw error;
 
-    allData = normalizeSubmissionRows(data || []);
+    const recoveredRows = await loadRecoveredSubmissions();
+    recoveredSubmissionCount = recoveredRows.length;
+    allData = normalizeSubmissionRows([...(data || []), ...recoveredRows]);
     updateStats();
     updateSchoolFilter();
     renderQualityPanel();
@@ -934,6 +1020,7 @@ function renderQualityPanel() {
       <div class="text-2xl font-bold text-slate-800">${allData.length}</div>
       <div class="text-sm text-slate-500 mt-1">已依學校、年級、班級去重後計算</div>
       <div class="text-sm text-slate-500 mt-1">不重複學生 ${uniqueStudents.toLocaleString()} 人；科目授權 ${subjectAuthorizations.toLocaleString()} 人次</div>
+      <div class="text-sm text-slate-500 mt-1">救援資料 ${recoveredSubmissionCount} 筆已納入統計與匯出</div>
     </div>
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
       <div class="text-sm text-slate-500 mb-2">各科班級數</div>
@@ -1210,8 +1297,9 @@ function fillSubjectSheet(wb, sheetName, subjectKey) {
       writeCell(ws, row, 4, record.school_code || '034725');
       writeCell(ws, row, 5, Number(record.grade));
       writeCell(ws, row, 6, Number(record.class_num));
-      writeCell(ws, row, 7, Number(record.student_count));
-      writeCell(ws, row, 8, record.teacher_name ? `申請老師：${record.teacher_name}` : '');
+      writeCell(ws, row, 7, getSubjectStudentCount(record, subjectKey));
+      const teacherName = getSubjectTeacher(record, subjectKey);
+      writeCell(ws, row, 8, teacherName ? `申請老師：${teacherName}` : '');
     });
 }
 
