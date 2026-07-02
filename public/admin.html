@@ -418,6 +418,10 @@
         class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors">
         📥 下載授權清冊 Excel
       </button>
+      <button id="downloadFinalBtn" type="button" onclick="downloadFinalData()"
+        class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors">
+        📊 下載最終完整數據
+      </button>
     </div>
   </header>
 
@@ -457,6 +461,31 @@
       <div class="subject-card bg-green-50 border border-green-200 text-center">
         <div class="text-xl font-bold text-green-700" id="statMath">0</div>
         <div class="text-xs text-green-600 mt-0.5">🔢 數學素養（班）</div>
+      </div>
+    </div>
+
+    <!-- 教育局表單填答數據 -->
+    <div class="admin-panel bg-white border border-blue-100">
+      <h2 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+        📝 教育局表單填答數據
+        <span class="text-xs text-gray-400 font-normal">請將以下數字填入 Google 表單</span>
+      </h2>
+      <div class="grid md:grid-cols-3 gap-3 text-sm" id="bureauAnswerPanel">
+        <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <div class="text-sm text-blue-700 font-bold">中文素養教材</div>
+          <div class="text-3xl font-bold text-blue-800 mt-1" id="answerChinese">—</div>
+          <div class="text-sm text-blue-600 mt-1">申請學生總人數</div>
+        </div>
+        <div class="rounded-xl border border-purple-200 bg-purple-50 p-4">
+          <div class="text-sm text-purple-700 font-bold">英文素養教材</div>
+          <div class="text-3xl font-bold text-purple-800 mt-1" id="answerEnglish">—</div>
+          <div class="text-sm text-purple-600 mt-1">申請學生總人數</div>
+        </div>
+        <div class="rounded-xl border border-green-200 bg-green-50 p-4">
+          <div class="text-sm text-green-700 font-bold">數學素養教材</div>
+          <div class="text-3xl font-bold text-green-800 mt-1" id="answerMath">—</div>
+          <div class="text-sm text-green-600 mt-1">申請學生總人數</div>
+        </div>
       </div>
     </div>
 
@@ -867,6 +896,7 @@ function normalizeSubmissionRows(rows) {
       duplicateClassIssues.push(`${row.grade}年${row.class_num}班含救援資料，請確認各科分頁都有列入`);
     }
     const { _teacherNames, _studentCounts, _duplicateCount, _hasRecoveredRecord, _recoveredSubjectKeys, _maxStudentCount, ...clean } = row;
+    clean._containsRecoveredRecord = Boolean(_hasRecoveredRecord);
     return clean;
   });
 
@@ -886,6 +916,15 @@ function getStudentStats(rows = allData) {
     });
     return stats;
   }, { uniqueStudents: 0, subjectAuthorizations: 0 });
+}
+
+function getSubjectStudentTotals(rows = allData) {
+  return rows.reduce((totals, row) => {
+    if (row.subject_chinese) totals.subject_chinese += getSubjectStudentCount(row, 'subject_chinese');
+    if (row.subject_english) totals.subject_english += getSubjectStudentCount(row, 'subject_english');
+    if (row.subject_math) totals.subject_math += getSubjectStudentCount(row, 'subject_math');
+    return totals;
+  }, { subject_chinese: 0, subject_english: 0, subject_math: 0 });
 }
 
 async function loadRecoveredSubmissions() {
@@ -943,6 +982,7 @@ async function loadData() {
     recoveredSubmissionCount = recoveredRows.length;
     allData = normalizeSubmissionRows([...(data || []), ...recoveredRows]);
     updateStats();
+    renderBureauAnswers();
     updateSchoolFilter();
     renderQualityPanel();
     renderTeacherSummary();
@@ -976,6 +1016,13 @@ function updateStats() {
   document.getElementById('statChinese').textContent = allData.filter(r => r.subject_chinese).length;
   document.getElementById('statEnglish').textContent = allData.filter(r => r.subject_english).length;
   document.getElementById('statMath').textContent = allData.filter(r => r.subject_math).length;
+}
+
+function renderBureauAnswers() {
+  const totals = getSubjectStudentTotals();
+  document.getElementById('answerChinese').textContent = totals.subject_chinese.toLocaleString();
+  document.getElementById('answerEnglish').textContent = totals.subject_english.toLocaleString();
+  document.getElementById('answerMath').textContent = totals.subject_math.toLocaleString();
 }
 
 function renderSchoolSummary() {
@@ -1334,6 +1381,88 @@ function fillSubjectSheet(wb, sheetName, subjectKey) {
       const teacherName = getSubjectTeacher(record, subjectKey);
       writeCell(ws, row, 8, teacherName ? `申請老師：${teacherName}` : '');
     });
+}
+
+function subjectSheetRows(subjectKey, subjectLabel) {
+  return allData
+    .filter(r => r[subjectKey])
+    .sort((a, b) => a.grade - b.grade || a.class_num - b.class_num)
+    .map((record, index) => ({
+      序號: index + 1,
+      學年度: Number(record.school_year || 115),
+      學校名稱: record.school_name || '桃園市龍潭區石門國民小學',
+      學校代碼: record.school_code || '034725',
+      科目: subjectLabel,
+      年級: Number(record.grade),
+      班級: Number(record.class_num),
+      學生人數: getSubjectStudentCount(record, subjectKey),
+      申請老師: getSubjectTeacher(record, subjectKey),
+      資料來源: record._isRecovered ? '救援合併資料' : '資料庫',
+    }));
+}
+
+function finalClassRows() {
+  return allData
+    .slice()
+    .sort((a, b) => a.grade - b.grade || a.class_num - b.class_num)
+    .map(record => ({
+      年級: Number(record.grade),
+      班級: Number(record.class_num),
+      統一學生人數: Number(record.student_count || 0),
+      中文: record.subject_chinese ? '是' : '',
+      中文申請老師: record.subject_chinese ? getSubjectTeacher(record, 'subject_chinese') : '',
+      英文: record.subject_english ? '是' : '',
+      英文申請老師: record.subject_english ? getSubjectTeacher(record, 'subject_english') : '',
+      數學: record.subject_math ? '是' : '',
+      數學申請老師: record.subject_math ? getSubjectTeacher(record, 'subject_math') : '',
+      填報時間: fmtDate(record.submitted_at),
+      資料註記: record._containsRecoveredRecord ? '含救援資料' : '',
+    }));
+}
+
+function appendJsonSheet(wb, sheetName, rows) {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+}
+
+function downloadFinalData() {
+  if (!allData.length) {
+    showToast('目前沒有可下載的資料', 'error');
+    return;
+  }
+  setBusy('downloadFinalBtn', true, '整理中…');
+
+  try {
+    const totals = getSubjectStudentTotals();
+    const stats = getStudentStats();
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const wb = XLSX.utils.book_new();
+
+    appendJsonSheet(wb, '教育局表單填答', [
+      { 題目: '班級授權清冊內，有多少學生申請「中文素養」教材？', 答案: totals.subject_chinese },
+      { 題目: '班級授權清冊內，有多少學生申請「英文素養」教材？', 答案: totals.subject_english },
+      { 題目: '班級授權清冊內，有多少學生申請「數學素養」教材？', 答案: totals.subject_math },
+      { 題目: '不重複學生數', 答案: stats.uniqueStudents },
+      { 題目: '科目授權總人次', 答案: stats.subjectAuthorizations },
+      { 題目: '班級筆數', 答案: allData.length },
+      { 題目: '救援資料筆數', 答案: recoveredSubmissionCount },
+      { 題目: '統計規則', 答案: '同一班不同老師填報不同人數時，一律採該班最高學生人數，並套用到所有科目。' },
+    ]);
+    appendJsonSheet(wb, '班級完整明細', finalClassRows());
+    appendJsonSheet(wb, '中文清冊', subjectSheetRows('subject_chinese', '中文素養'));
+    appendJsonSheet(wb, '英文清冊', subjectSheetRows('subject_english', '英文素養'));
+    appendJsonSheet(wb, '數學清冊', subjectSheetRows('subject_math', '數學素養'));
+
+    XLSX.writeFile(wb, `石門國小_PaGamO_最終完整數據_${stamp}.xlsx`, { cellStyles: true });
+    showToast('最終完整數據已下載');
+  } catch (error) {
+    console.error(error);
+    showToast('下載最終完整數據失敗，請稍後再試', 'error');
+  } finally {
+    setBusy('downloadFinalBtn', false);
+  }
 }
 
 // Service Worker 版本更新通知
