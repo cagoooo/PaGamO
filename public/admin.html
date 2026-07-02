@@ -760,7 +760,7 @@ function subjectKeysForRow(row) {
 function applyRecoveredSubjectOverride(record, row) {
   if (!row.recovery_note) return;
   const teacherName = String(row.teacher_name || '').trim();
-  const studentCount = Number(row.student_count || 0);
+  const studentCount = Number(record.student_count || row.student_count || 0);
   if (!record._recoveredSubjectKeys) record._recoveredSubjectKeys = new Set();
   subjectKeysForRow(row).forEach(subjectKey => {
     record._subjectTeachers[subjectKey] = teacherName ? [teacherName] : [];
@@ -775,8 +775,7 @@ function getSubjectTeacher(record, subjectKey) {
 }
 
 function getSubjectStudentCount(record, subjectKey) {
-  const counts = record._subjectStudentCounts?.[subjectKey] || [];
-  return counts.length ? counts[counts.length - 1] : Number(record.student_count || 0);
+  return Number(record.student_count || 0);
 }
 
 function normalizeSubmissionRows(rows) {
@@ -796,6 +795,7 @@ function normalizeSubmissionRows(rows) {
         map.set(key, {
           ...row,
           student_count: studentCount,
+          _maxStudentCount: studentCount,
           _teacherNames: teacherName ? [teacherName] : [],
           _studentCounts: studentCount ? [studentCount] : [],
           _subjectTeachers: getRowSubjectTeachers(row),
@@ -815,6 +815,8 @@ function normalizeSubmissionRows(rows) {
       if (studentCount && !current._studentCounts.includes(studentCount)) {
         current._studentCounts.push(studentCount);
       }
+      current._maxStudentCount = Math.max(Number(current._maxStudentCount || current.student_count || 0), studentCount);
+      current.student_count = current._maxStudentCount;
       current._hasRecoveredRecord = Boolean(current._hasRecoveredRecord || row.recovery_note);
       const rowSubjectTeachers = getRowSubjectTeachers(row);
       if (!current._recoveredSubjectKeys.has('subject_chinese')) {
@@ -841,7 +843,7 @@ function normalizeSubmissionRows(rows) {
       current.subject_chinese = Boolean(current.subject_chinese || row.subject_chinese);
       current.subject_english = Boolean(current.subject_english || row.subject_english);
       current.subject_math = Boolean(current.subject_math || row.subject_math);
-      current.student_count = studentCount || current.student_count;
+      current.student_count = current._maxStudentCount;
       current.teacher_name = current._teacherNames.join('、');
 
       if (new Date(row.submitted_at || 0) >= new Date(current.submitted_at || 0)) {
@@ -858,13 +860,13 @@ function normalizeSubmissionRows(rows) {
       const label = `${row.grade}年${row.class_num}班`;
       duplicateClassIssues.push(`${label} 有 ${row._duplicateCount} 筆同班資料，已合併計算避免重複算學生`);
       if (row._studentCounts.length > 1) {
-        duplicateClassIssues.push(`${label} 學生人數不一致（${row._studentCounts.join('、')}），目前採最新填報 ${row.student_count} 人`);
+        duplicateClassIssues.push(`${label} 學生人數不一致（${row._studentCounts.join('、')}），已統一採最高人數 ${row.student_count} 人`);
       }
     }
     if (row._hasRecoveredRecord) {
       duplicateClassIssues.push(`${row.grade}年${row.class_num}班含救援資料，請確認各科分頁都有列入`);
     }
-    const { _teacherNames, _studentCounts, _duplicateCount, _hasRecoveredRecord, _recoveredSubjectKeys, ...clean } = row;
+    const { _teacherNames, _studentCounts, _duplicateCount, _hasRecoveredRecord, _recoveredSubjectKeys, _maxStudentCount, ...clean } = row;
     return clean;
   });
 
@@ -888,7 +890,7 @@ function getStudentStats(rows = allData) {
 
 async function loadRecoveredSubmissions() {
   try {
-    const res = await fetch(`${RECOVERED_SUBMISSIONS_URL}?v=20260702-03`, { cache: 'no-store' });
+    const res = await fetch(`${RECOVERED_SUBMISSIONS_URL}?v=20260702-04`, { cache: 'no-store' });
     if (!res.ok) return [];
     const rows = await res.json();
     return Array.isArray(rows) ? rows.map(row => ({ ...row, _isRecovered: true })) : [];
