@@ -1,5 +1,7 @@
 # 石門國小 PaGamO 素養教材班級授權填報
 
+> 📌 **目前版本：v1.0.0**（版本管理自 2026-09-06 起，依據 `version.json`）
+
 桃園市龍潭區石門國民小學校內使用的 PaGamO 素養教材班級授權填報工具。
 
 🌐 線上網址：https://cagoooo.github.io/PaGamO/
