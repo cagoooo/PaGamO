@@ -414,6 +414,10 @@
       <button id="refreshBtn" type="button" onclick="loadData()" class="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
         🔄 重新整理
       </button>
+      <label class="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-pointer" title="從本機選擇 recovered-submissions.json；資料不會上傳">
+        🛟 匯入救援資料
+        <input type="file" accept=".json,application/json" class="hidden" onchange="importRecoveredFile(this)">
+      </label>
       <button id="downloadBtn" type="button" onclick="downloadExcel()"
         class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors">
         📥 下載授權清冊 Excel
@@ -644,7 +648,8 @@
 const SUPABASE_URL = 'https://xcnmmaayrtiklntvhdhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhjbm1tYWF5cnRpa2xudHZoZGhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTU0NjQsImV4cCI6MjA5MjAzMTQ2NH0.Q5yCQHPtJBitKYucn-8jZqsIqkaSLmJVt1ZVse61qks';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const RECOVERED_SUBMISSIONS_URL = './recovered-submissions.json';
+// 救援資料含老師姓名，不再放在公開網站；需要時由管理者從本機匯入 JSON，只存在這個分頁的記憶體裡。
+let importedRecoveredRows = [];
 
 let allData = [];
 let editTarget = null;
@@ -928,15 +933,26 @@ function getSubjectStudentTotals(rows = allData) {
 }
 
 async function loadRecoveredSubmissions() {
-  try {
-    const res = await fetch(`${RECOVERED_SUBMISSIONS_URL}?v=20260702-04`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    const rows = await res.json();
-    return Array.isArray(rows) ? rows.map(row => ({ ...row, _isRecovered: true })) : [];
-  } catch (error) {
-    console.warn('[PaGamO] recovered submissions unavailable', error);
-    return [];
-  }
+  return importedRecoveredRows.map(row => ({ ...row, _isRecovered: true }));
+}
+
+function importRecoveredFile(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const rows = JSON.parse(reader.result);
+      if (!Array.isArray(rows)) throw new Error('not an array');
+      importedRecoveredRows = rows;
+      showToast(`已匯入救援資料 ${rows.length} 筆（只在這個分頁有效）`, 'success');
+      loadData();
+    } catch (error) {
+      showToast('救援資料格式不正確，請選擇 recovered-submissions.json', 'error');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function resetFilters() {
