@@ -1,5 +1,7 @@
 const BUILD_VERSION = "20260702-05";
-const CACHE_NAME = `pagamo-${BUILD_VERSION}`;
+// 同一網域（cagoooo.github.io）的所有工具共用快取空間，只能清除自己這個前綴的快取
+const CACHE_PREFIX = 'pagamo-';
+const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
 
 self.addEventListener('install', () => {
   // prompt-to-refresh：不 skipWaiting，等使用者點「立刻更新」才換版
@@ -9,7 +11,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
       .then(() =>
